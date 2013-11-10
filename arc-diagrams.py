@@ -22,18 +22,25 @@ class LettersView(QGraphicsItem):
 
     def boundingRect(self):
         return QRectF(0, 0, self.FONT_METRICS.width(self.letters),
-                      self.FONT_METRICS.height())
+                      self.FONT_METRICS.height() + 50)
     
     def paint(self, painter, objects, widget):
         painter.setPen(Qt.NoPen)
         painter.setBrush(self.LETTER_BRUSH)
         painter.drawRect(self.boundingRect())
 
+
         painter.setFont(self.FONT)
         painter.setPen(self.LETTER_PEN)
-        painter.drawText(self.boundingRect(),
-                         Qt.AlignCenter | Qt.AlignBottom,
+        painter.drawText(0, 0, self.boundingRect().width(),
+                self.FONT_METRICS.height(),
+                         Qt.AlignCenter | Qt.AlignTop,
                          self.letters)
+
+        painter.setPen(QPen(QColor(0, 0, 0, 50), 5, Qt.SolidLine))
+        painter.drawArc(0, self.boundingRect().height(),
+                self.boundingRect().width(), 50, 0 * 16, 180*
+          16)
 
 
 class Window(QWidget):
