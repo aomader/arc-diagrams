@@ -14,9 +14,29 @@ class SubstringView(QGraphicsItem):
     def __init__(self, substring, starts):
         super(QGraphicsItem, self).__init__()
         self.substring = substring
-        self.starts = starts
+        self.starts = sorted(starts)
+        self.highlighted = False
         self.brush = QColor(randint(0, 255), randint(0, 255), randint(0, 255))
 
+        # generate text rects
+        self.rects = [QRectF((s - self.starts[0]) * SubstringView.CHAR_WIDTH, 0,
+                            len(self.substring) * SubstringView.CHAR_WIDTH,
+                            SubstringView.CHAR_HEIGHT)
+                      for s in starts]
+
+        # generate arc paths
+        self.arcs = []
+        for left, right in zip(self.rects, self.rects[1:]):
+            width1 = right.x() + right.width() - left.x()
+            width2 = right.x() - left.x() - left.width()
+            path = QPainterPath(QPointF(left.x(), 0))
+            path.arcTo(QRectF(left.x(), -width1/2., width1, width1), -180, -180)
+            path.lineTo(right.x(), 0)
+            path.arcTo(QRectF(left.x() + left.width(), -width2/2., width2,
+                              width2), 0, 180)
+            self.arcs.append(path)
+
+        self.setAcceptHoverEvents(True)
         self.setPos(self.starts[0] * SubstringView.CHAR_WIDTH, 0)
 
     def boundingRect(self):
@@ -24,63 +44,31 @@ class SubstringView(QGraphicsItem):
                       SubstringView.CHAR_WIDTH, SubstringView.CHAR_HEIGHT)
 
     def paint(self, painter, objects, widget):
+        # DEBUG: draw text background
+        painter.setPen(Qt.NoPen)
+        painter.setBrush(self.brush)
+        for rect in self.rects:
+            painter.drawRect(rect)
+
         # draw text
         painter.setPen(SubstringView.LETTER_PEN)
         painter.setFont(SubstringView.FONT)
-        for start in self.starts:
-            region = QRect((start - self.starts[0]) * SubstringView.CHAR_WIDTH, 0,
-                           len(self.substring) * SubstringView.CHAR_WIDTH,
-                           SubstringView.CHAR_HEIGHT)
-            painter.setPen(Qt.NoPen)
-            painter.setBrush(self.brush)
-            painter.drawRect(region)
-            painter.setPen(SubstringView.LETTER_PEN)
-            painter.drawText(region, Qt.AlignCenter | Qt.AlignTop,
+        for rect in self.rects:
+            painter.drawText(rect, Qt.AlignCenter | Qt.AlignTop,
                              self.substring)
 
         # draw arcs
-        painter.setPen(QPen(QColor(0, 0, 0, 50), len(self.substring) * SubstringView.CHAR_WIDTH, Qt.SolidLine))
-        for left, right in zip(self.starts, self.starts[1:]):
-            width = (right - left) * SubstringView.CHAR_WIDTH
-            region = QRect((left - self.starts[0] + len(self.substring)/2.) * SubstringView.CHAR_WIDTH, -width/2., width, width)
-            painter.drawArc(region, 0 * 16, 180 * 16)
-
-
-class LettersView(QGraphicsItem):
-    LETTER_PEN = QPen()
-    LETTER_BRUSH = QColor(randint(0, 255), randint(0, 255),
-            randint(0, 255))
-    FONT = QFont('DejaVu Sans Mono', 12)
-    FONT_METRICS = QFontMetrics(QFont('DejaVu Sans Mono', 12))
-
-    def __init__(self, letters):
-        super(QGraphicsItem, self).__init__()
-        seed()
-        self.LETTER_BRUSH = QColor(randint(0, 255), randint(0, 255),
-                randint(0, 255))
-        self.letters = letters
-
-    def boundingRect(self):
-        return QRectF(0, 0, self.FONT_METRICS.width(self.letters),
-                      self.FONT_METRICS.height() + 50)
-    
-    def paint(self, painter, objects, widget):
         painter.setPen(Qt.NoPen)
-        painter.setBrush(self.LETTER_BRUSH)
-        painter.drawRect(self.boundingRect())
+        painter.setBrush(QColor(0, 0, 0, 150 if self.highlighted else 50))
+        for arc in self.arcs:
+            painter.drawPath(arc)
 
-
-        painter.setFont(self.FONT)
-        painter.setPen(self.LETTER_PEN)
-        painter.drawText(0, 0, self.boundingRect().width(),
-                self.FONT_METRICS.height(),
-                         Qt.AlignCenter | Qt.AlignTop,
-                         self.letters)
-
-        painter.setPen(QPen(QColor(0, 0, 0, 50), 5, Qt.SolidLine))
-        painter.drawArc(0, self.boundingRect().height(),
-                self.boundingRect().width(), 50, 0 * 16, 180*
-          16)
+    def hoverMoveEvent(self, event):
+        p = event.scenePos()
+        highlighted = any(r.contains(p) for r in self.rects)
+        if highlighted != self.highlighted:
+            self.highlighted = highlighted
+            self.update()
 
 
 class Window(QWidget):
@@ -100,25 +88,19 @@ class Window(QWidget):
         view.setRenderHint(QPainter.HighQualityAntialiasing)
 
         view.resetMatrix()
-        view.scale(5, 5)
+        view.scale(2, 2)
 
         SubstringView.FONT_METRICS = QFontMetrics(SubstringView.FONT, view)
         SubstringView.CHAR_WIDTH = SubstringView.FONT_METRICS.width('A')
         SubstringView.CHAR_HEIGHT = SubstringView.FONT_METRICS.height()
 
-        LettersView.FONT_METRICS = QFontMetrics(LettersView.FONT, view)
+        s1 = SubstringView('1234567', [0, 12, 24])
+        s2 = SubstringView('abcde', [7])
+        s3 = SubstringView('fghij', [19])
 
-        s = SubstringView('test', [1, 7, 13])
-        self.scene.addItem(s)
-
-        #x = 0
-        #for s in ['das', 'ist', 'ein', 'test']:
-        #    l = LettersView(s)
-        #    l.setPos(x, 0)
-        #    x += l.boundingRect().width()
-        #    self.scene.addItem(l)
-
-
+        self.scene.addItem(s1)
+        self.scene.addItem(s2)
+        self.scene.addItem(s3)
 
         layout = QVBoxLayout()
         layout.setSpacing(0)
