@@ -12,7 +12,7 @@ class SubstringView(QGraphicsItem):
     CHAR_HEIGHT = None
 
     def __init__(self, substring, starts):
-        super().__init__()
+        super(QGraphicsItem, self).__init__()
         self.substring = substring
         self.starts = starts
         self.brush = QColor(randint(0, 255), randint(0, 255), randint(0, 255))
@@ -54,7 +54,7 @@ class LettersView(QGraphicsItem):
     FONT_METRICS = QFontMetrics(QFont('DejaVu Sans Mono', 12))
 
     def __init__(self, letters):
-        super().__init__()
+        super(QGraphicsItem, self).__init__()
         seed()
         self.LETTER_BRUSH = QColor(randint(0, 255), randint(0, 255),
                 randint(0, 255))
@@ -85,7 +85,7 @@ class LettersView(QGraphicsItem):
 
 class Window(QWidget):
     def __init__(self):
-        super().__init__()
+        super(QWidget, self).__init__()
 
         self.setWindowTitle('ArcDiagrams')
         self.resize(800, 600)
