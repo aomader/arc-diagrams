@@ -18,30 +18,35 @@ class SubstringView(QGraphicsItem):
         self.highlighted = False
         self.brush = QColor(randint(0, 255), randint(0, 255), randint(0, 255))
 
+        self.maxRadius = 0 if len(starts) == 1 else \
+                         (max(r-l for l,r in zip(self.starts, self.starts[1:]))
+                          + len(self.substring)) * SubstringView.CHAR_WIDTH/2.
+
         # generate text rects
-        self.rects = [QRectF((s - self.starts[0]) * SubstringView.CHAR_WIDTH, 0,
-                            len(self.substring) * SubstringView.CHAR_WIDTH,
-                            SubstringView.CHAR_HEIGHT)
-                      for s in starts]
+        self.rects = [QRectF((s - self.starts[0]) * SubstringView.CHAR_WIDTH,
+                             self.maxRadius, len(self.substring) *
+                             SubstringView.CHAR_WIDTH,
+                             SubstringView.CHAR_HEIGHT) for s in starts]
 
         # generate arc paths
         self.arcs = []
         for left, right in zip(self.rects, self.rects[1:]):
-            width1 = right.x() + right.width() - left.x()
-            width2 = right.x() - left.x() - left.width()
-            path = QPainterPath(QPointF(left.x(), 0))
-            path.arcTo(QRectF(left.x(), -width1/2., width1, width1), -180, -180)
-            path.lineTo(right.x(), 0)
-            path.arcTo(QRectF(left.x() + left.width(), -width2/2., width2,
-                              width2), 0, 180)
+            diameter1 = right.x() + right.width() - left.x()
+            diameter2 = right.x() - left.x() - left.width()
+            path = QPainterPath(QPointF(left.x(), self.maxRadius))
+            path.arcTo(QRectF(left.x(), self.maxRadius - diameter1/2.,
+                              diameter1, diameter1), -180, -180)
+            path.lineTo(right.x(), self.maxRadius)
+            path.arcTo(QRectF(left.x() + left.width(), self.maxRadius -
+                              diameter2/2., diameter2, diameter2), 0, 180)
             self.arcs.append(path)
 
         self.setAcceptHoverEvents(True)
-        self.setPos(self.starts[0] * SubstringView.CHAR_WIDTH, 0)
+        self.setPos(self.starts[0] * SubstringView.CHAR_WIDTH, -self.maxRadius)
 
     def boundingRect(self):
-        return QRectF(0, 0, (self.starts[-1] + len(self.substring) - self.starts[0]) * 
-                      SubstringView.CHAR_WIDTH, SubstringView.CHAR_HEIGHT)
+        return QRectF(0, 0, self.rects[-1].right() - self.rects[0].left(),
+                      self.maxRadius + SubstringView.CHAR_HEIGHT)
 
     def paint(self, painter, objects, widget):
         # DEBUG: draw text background
@@ -63,12 +68,24 @@ class SubstringView(QGraphicsItem):
         for arc in self.arcs:
             painter.drawPath(arc)
 
+    def hoverEnterEvent(self, event):
+        self.testHighlight(event)
+
     def hoverMoveEvent(self, event):
-        p = event.scenePos()
-        highlighted = any(r.contains(p) for r in self.rects)
-        if highlighted != self.highlighted:
-            self.highlighted = highlighted
+        self.testHighlight(event)
+
+    def hoverLeaveEvent(self, event):
+        self.highlighted = False
+        self.update()
+
+    def testHighlight(self, event):
+        p = self.mapFromScene(event.scenePos())
+        highlight = any(r.contains(p) for r in self.rects) or \
+                    any(a.contains(p) for a in self.arcs)
+        if highlight != self.highlighted:
+            self.highlighted = highlight
             self.update()
+
 
 
 class Window(QWidget):
