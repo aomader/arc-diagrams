@@ -1,23 +1,22 @@
-#!/usr/bin/env python
 # -*- coding: utf-8 -*-
+
+from random import seed, randint
 
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
-from sys import argv
-
-import random
 
 class LettersView(QGraphicsItem):
     LETTER_PEN = QPen()
-    LETTER_BRUSH = QColor(random.randint(0, 255), random.randint(0, 255),
-            random.randint(0, 255))
+    LETTER_BRUSH = QColor(randint(0, 255), randint(0, 255),
+            randint(0, 255))
     FONT = QFont('DejaVu Sans Mono', 12)
     FONT_METRICS = QFontMetrics(QFont('DejaVu Sans Mono', 12))
 
     def __init__(self, letters):
         super().__init__()
-        self.LETTER_BRUSH = QColor(random.randint(0, 255), random.randint(0, 255),
-            random.randint(0, 255))
+        seed()
+        self.LETTER_BRUSH = QColor(randint(0, 255), randint(0, 255),
+                randint(0, 255))
         self.letters = letters
 
     def boundingRect(self):
@@ -80,15 +79,5 @@ class Window(QWidget):
 
         self.setLayout(layout)
         self.show()
-
-
-def run():
-    random.seed()
-    app = QApplication(argv)
-    win = Window()
-    app.exec_()
-
-if __name__ == '__main__':
-    run()
 
 # vim: set expandtab shiftwidth=4 softtabstop=4 textwidth=79:
