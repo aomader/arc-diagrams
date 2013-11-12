@@ -1,91 +1,108 @@
 # -*- coding: utf-8 -*-
 
-from random import seed, randint
-
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 
-class SubstringView(QGraphicsItem):
-    LETTER_PEN = QPen(QColor('#000000'), 1, Qt.SolidLine)
+from algorithm import *
+
+class TextView(QGraphicsObject):
     FONT = QFont('DejaVu Sans Mono', 12)
+
+    def __init__(self, text=''):
+        super(QGraphicsObject, self).__init__()
+        self.text = text
+
+    def setText(self, text):
+        self.text = text
+        self.prepareGeometryChange()
+        self.update()
+
+    def boundingRect(self):
+        return QRectF(0, 0, len(self.text) * SceneView.CHAR_WIDTH,
+                      SceneView.CHAR_HEIGHT)
+
+    def paint(self, painter, objects, widget):
+        painter.setFont(TextView.FONT)
+        for i,c in enumerate(self.text):
+            rect = QRectF(i * SceneView.CHAR_WIDTH, 0, SceneView.CHAR_WIDTH,
+                          SceneView.CHAR_HEIGHT)
+            painter.drawText(rect, Qt.AlignCenter | Qt.AlignTop, c)
+
+
+class ArcView(QGraphicsObject):
+    BRUSH = QColor(0, 68, 162, 25)
+
+    def __init__(self, start, end, width):
+        super(QGraphicsObject, self).__init__()
+        inset = SceneView.CHAR_WIDTH / 8.
+        outer = (end - start + width) * SceneView.CHAR_WIDTH
+        inner = (end - start - width) * SceneView.CHAR_WIDTH
+
+        self.rect = QRectF(0, 0, (end - start + width) * SceneView.CHAR_WIDTH,
+                           (end - start + width) * SceneView.CHAR_WIDTH / 2.)
+
+        width = width * SceneView.CHAR_WIDTH
+        self.path = QPainterPath(QPointF(inset, self.rect.bottom()))
+        self.path.arcTo(inset, inset, outer - 2*inset, outer - 2*inset, -180, -180)
+        self.path.lineTo(inner + width + inset, self.rect.bottom())
+        self.path.arcTo(width - inset, width - inset, inner + 2*inset, inner +
+                        2*inset, 0, 180)
+
+        self.setPos(start * SceneView.CHAR_WIDTH, -outer / 2.)
+
+    def boundingRect(self):
+        return self.rect
+
+    def paint(self, painter, objects, widget):
+        painter.setPen(Qt.NoPen)
+        painter.setBrush(ArcView.BRUSH)
+        painter.drawPath(self.path)
+
+
+class SceneView(QGraphicsView):
     CHAR_WIDTH = None
     CHAR_HEIGHT = None
 
-    def __init__(self, substring, starts):
-        super(QGraphicsItem, self).__init__()
-        self.substring = substring
-        self.starts = sorted(starts)
-        self.highlighted = False
-        self.brush = QColor(randint(0, 255), randint(0, 255), randint(0, 255))
+    def __init__(self):
+        super(QGraphicsView, self).__init__()
 
-        self.maxRadius = 0 if len(starts) == 1 else \
-                         (max(r-l for l,r in zip(self.starts, self.starts[1:]))
-                          + len(self.substring)) * SubstringView.CHAR_WIDTH/2.
+        self.scene = QGraphicsScene()
+        self.scene.setSceneRect(self.scene.itemsBoundingRect())
 
-        # generate text rects
-        self.rects = [QRectF((s - self.starts[0]) * SubstringView.CHAR_WIDTH,
-                             self.maxRadius, len(self.substring) *
-                             SubstringView.CHAR_WIDTH,
-                             SubstringView.CHAR_HEIGHT) for s in starts]
+        self.setScene(self.scene)
+        self.setRenderHint(QPainter.Antialiasing)
+        self.setRenderHint(QPainter.TextAntialiasing)
+        self.setRenderHint(QPainter.HighQualityAntialiasing)
+        self.setDragMode(QGraphicsView.ScrollHandDrag)
 
-        # generate arc paths
-        self.arcs = []
-        for left, right in zip(self.rects, self.rects[1:]):
-            diameter1 = right.x() + right.width() - left.x()
-            diameter2 = right.x() - left.x() - left.width()
-            path = QPainterPath(QPointF(left.x(), self.maxRadius))
-            path.arcTo(QRectF(left.x(), self.maxRadius - diameter1/2.,
-                              diameter1, diameter1), -180, -180)
-            path.lineTo(right.x(), self.maxRadius)
-            path.arcTo(QRectF(left.x() + left.width(), self.maxRadius -
-                              diameter2/2., diameter2, diameter2), 0, 180)
-            self.arcs.append(path)
+        metrics = QFontMetrics(TextView.FONT, self)
+        SceneView.CHAR_WIDTH = metrics.width('W')
+        SceneView.CHAR_HEIGHT = metrics.height()
 
-        self.setAcceptHoverEvents(True)
-        self.setPos(self.starts[0] * SubstringView.CHAR_WIDTH, -self.maxRadius)
+        self.textView = TextView()
+        self.arcViews = []
 
-    def boundingRect(self):
-        return QRectF(0, 0, self.rects[-1].right() - self.rects[0].left(),
-                      self.maxRadius + SubstringView.CHAR_HEIGHT)
+        self.scene.addItem(self.textView)
 
-    def paint(self, painter, objects, widget):
-        # DEBUG: draw text background
-        painter.setPen(Qt.NoPen)
-        painter.setBrush(self.brush)
-        for rect in self.rects:
-            painter.drawRect(rect)
+    def setText(self, text):
+        self.textView.setText(text)
 
-        # draw text
-        painter.setPen(SubstringView.LETTER_PEN)
-        painter.setFont(SubstringView.FONT)
-        for rect in self.rects:
-            painter.drawText(rect, Qt.AlignCenter | Qt.AlignTop,
-                             self.substring)
+        for arc in self.arcViews:
+            self.scene.removeItem(arc)
+        self.arcViews = []
 
-        # draw arcs
-        painter.setPen(Qt.NoPen)
-        painter.setBrush(QColor(0, 0, 0, 150 if self.highlighted else 50))
-        for arc in self.arcs:
-            painter.drawPath(arc)
+        for start, end, width in arc_pairs(text):
+            arc = ArcView(start, end, width)
+            self.scene.addItem(arc)
+            self.arcViews.append(arc)
 
-    def hoverEnterEvent(self, event):
-        self.testHighlight(event)
 
-    def hoverMoveEvent(self, event):
-        self.testHighlight(event)
-
-    def hoverLeaveEvent(self, event):
-        self.highlighted = False
-        self.update()
-
-    def testHighlight(self, event):
-        p = self.mapFromScene(event.scenePos())
-        highlight = any(r.contains(p) for r in self.rects) or \
-                    any(a.contains(p) for a in self.arcs)
-        if highlight != self.highlighted:
-            self.highlighted = highlight
-            self.update()
-
+    def wheelEvent(self, event):
+        self.setTransformationAnchor(QGraphicsView.AnchorUnderMouse)
+        if event.delta() > 0:
+            self.scale(1.15, 1.15)
+        else:
+            self.scale(1.0/1.15, 1.0/1.15)
 
 
 class Window(QWidget):
@@ -95,36 +112,22 @@ class Window(QWidget):
         self.setWindowTitle('ArcDiagrams')
         self.resize(800, 600)
 
-        self.scene = QGraphicsScene()
-        self.scene.setBackgroundBrush(QBrush(QColor('#00FF00')))
-        self.scene.setSceneRect(self.scene.itemsBoundingRect())
+        view = SceneView()
 
-        view = QGraphicsView(self.scene)
-        view.setRenderHint(QPainter.Antialiasing)
-        view.setRenderHint(QPainter.TextAntialiasing)
-        view.setRenderHint(QPainter.HighQualityAntialiasing)
+        text = QLineEdit()
+        text.textChanged.connect(lambda: view.setText(text.text()))
 
-        view.resetMatrix()
-        view.scale(2, 2)
-
-        SubstringView.FONT_METRICS = QFontMetrics(SubstringView.FONT, view)
-        SubstringView.CHAR_WIDTH = SubstringView.FONT_METRICS.width('A')
-        SubstringView.CHAR_HEIGHT = SubstringView.FONT_METRICS.height()
-
-        s1 = SubstringView('1234567', [0, 12, 24])
-        s2 = SubstringView('abcde', [7])
-        s3 = SubstringView('fghij', [19])
-
-        self.scene.addItem(s1)
-        self.scene.addItem(s2)
-        self.scene.addItem(s3)
+        view.setText('ichs0ers0s0s0s0s0unddannwirsodasodasodasoda')
+        text.setText('ichs0ers0s0s0s0s0unddannwirsodasodasodasoda')
 
         layout = QVBoxLayout()
         layout.setSpacing(0)
         layout.setMargin(0)
         layout.addWidget(view)
+        layout.addWidget(text)
 
         self.setLayout(layout)
         self.show()
+
 
 # vim: set expandtab shiftwidth=4 softtabstop=4 textwidth=79:
