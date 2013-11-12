@@ -7,6 +7,7 @@ from algorithm import *
 
 class TextView(QGraphicsObject):
     FONT = QFont('DejaVu Sans Mono', 12)
+    PEN = QPen(QColor('#333333'), 1, Qt.SolidLine)
 
     def __init__(self, text=''):
         super(QGraphicsObject, self).__init__()
@@ -19,18 +20,27 @@ class TextView(QGraphicsObject):
 
     def boundingRect(self):
         return QRectF(0, 0, len(self.text) * SceneView.CHAR_WIDTH,
-                      SceneView.CHAR_HEIGHT)
+                      SceneView.CHAR_HEIGHT + 5)
 
     def paint(self, painter, objects, widget):
+        inset = SceneView.CHAR_WIDTH / 8.
+        painter.setPen(TextView.PEN)
         painter.setFont(TextView.FONT)
         for i,c in enumerate(self.text):
-            rect = QRectF(i * SceneView.CHAR_WIDTH, 0, SceneView.CHAR_WIDTH,
+            rect = QRectF(i * SceneView.CHAR_WIDTH, 5., SceneView.CHAR_WIDTH,
                           SceneView.CHAR_HEIGHT)
             painter.drawText(rect, Qt.AlignCenter | Qt.AlignTop, c)
 
+        painter.setPen(Qt.NoPen)
+        painter.setBrush(QColor(0, 0, 0, 25))
+        for i in range(0, len(self.text)):
+            painter.drawRect(QRectF(i * SceneView.CHAR_WIDTH + inset, 3,
+                                    SceneView.CHAR_WIDTH - 2*inset, 1))
+
+
 
 class ArcView(QGraphicsObject):
-    BRUSH = QColor(0, 68, 162, 25)
+    BRUSH = QColor(0, 67, 136, 23)
 
     def __init__(self, start, end, width):
         super(QGraphicsObject, self).__init__()
@@ -68,6 +78,7 @@ class SceneView(QGraphicsView):
 
         self.scene = QGraphicsScene()
         self.scene.setSceneRect(self.scene.itemsBoundingRect())
+        self.setBackgroundBrush(QColor('#f7f7f7'))
 
         self.setScene(self.scene)
         self.setRenderHint(QPainter.Antialiasing)
@@ -117,8 +128,9 @@ class Window(QWidget):
         text = QLineEdit()
         text.textChanged.connect(lambda: view.setText(text.text()))
 
-        view.setText('ichs0ers0s0s0s0s0unddannwirsodasodasodasoda')
-        text.setText('ichs0ers0s0s0s0s0unddannwirsodasodasodasoda')
+        initial = '11111000110111001001011110001101110001010'
+        view.setText(initial)
+        text.setText(initial)
 
         layout = QVBoxLayout()
         layout.setSpacing(0)
