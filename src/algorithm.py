@@ -58,8 +58,9 @@ def naive_maximal_matching_pairs(string):
             idx = string.find(candidate, s + l)
             if idx != -1:
                 candidates.append((candidate, s, idx))
-                break
         s += 1
+
+    #print('unfiltered %s' % candidates)
 
     for candidate in candidates:
         if any(sub != candidate[0] and sub.find(candidate[0]) != -1 and
@@ -93,10 +94,13 @@ def naive_essential_matching_pairs(string):
     regions = list(naive_repetition_regions(string))
     max_pairs = list(naive_maximal_matching_pairs(string))
 
+    print('rep regions %s' % regions)
+
     # definition 3.1
     for sub,x,y in max_pairs:
         right = y + len(sub)
-        if any(x >= s and right <= e for _,s,e in regions):
+        if any(x >= s and x + len(sub) <= e for _,s,e in regions) or \
+           any(y >= s and y + len(sub) <= e for _,s,e in regions):
             continue
         yield (x, y, len(sub))
 
@@ -108,8 +112,6 @@ def naive_essential_matching_pairs(string):
         width = len(sub)
         for arc_start in range(start, end - width, width):
             yield (arc_start, arc_start + width, width)
-
-    
 
 def arc_pairs(string):
     return naive_essential_matching_pairs(unicode(string))

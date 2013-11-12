@@ -41,6 +41,7 @@ class TextView(QGraphicsObject):
 
 class ArcView(QGraphicsObject):
     BRUSH = QColor(0, 67, 136, 23)
+    BRUSH_HIGHLIGHTED = QColor(255, 0, 0, 150)
 
     def __init__(self, start, end, width):
         super(QGraphicsObject, self).__init__()
@@ -58,14 +59,20 @@ class ArcView(QGraphicsObject):
         self.path.arcTo(width - inset, width - inset, inner + 2*inset, inner +
                         2*inset, 0, 180)
 
+        self.highlighted = False
         self.setPos(start * SceneView.CHAR_WIDTH, -outer / 2.)
+
+    def setHighlighted(self, highlighted):
+        self.highlighted = highlighted
+        self.update()
 
     def boundingRect(self):
         return self.rect
 
     def paint(self, painter, objects, widget):
         painter.setPen(Qt.NoPen)
-        painter.setBrush(ArcView.BRUSH)
+        painter.setBrush(ArcView.BRUSH_HIGHLIGHTED if self.highlighted else
+                ArcView.BRUSH)
         painter.drawPath(self.path)
 
 
@@ -77,7 +84,6 @@ class SceneView(QGraphicsView):
         super(QGraphicsView, self).__init__()
 
         self.scene = QGraphicsScene()
-        self.scene.setSceneRect(self.scene.itemsBoundingRect())
         self.setBackgroundBrush(QColor('#f7f7f7'))
 
         self.setScene(self.scene)
@@ -85,6 +91,7 @@ class SceneView(QGraphicsView):
         self.setRenderHint(QPainter.TextAntialiasing)
         self.setRenderHint(QPainter.HighQualityAntialiasing)
         self.setDragMode(QGraphicsView.ScrollHandDrag)
+        self.setMouseTracking(True)
 
         metrics = QFontMetrics(TextView.FONT, self)
         SceneView.CHAR_WIDTH = metrics.width('W')
@@ -92,6 +99,8 @@ class SceneView(QGraphicsView):
 
         self.textView = TextView()
         self.arcViews = []
+
+        self.highlighted = set()
 
         self.scene.addItem(self.textView)
 
@@ -106,7 +115,21 @@ class SceneView(QGraphicsView):
             arc = ArcView(start, end, width)
             self.scene.addItem(arc)
             self.arcViews.append(arc)
+        self.scene.setSceneRect(self.scene.itemsBoundingRect())
 
+    def mouseMoveEvent(self, event):
+        super(QGraphicsView, self).mouseMoveEvent(event)
+
+        new_highlighted = set(item for item in self.items(event.pos())
+                     if isinstance(item, ArcView) and
+                     item.path.contains(item.mapFromScene(self.mapToScene(event.pos()))))
+
+        for i in self.highlighted - new_highlighted:
+            i.setHighlighted(False)
+        for i in new_highlighted - self.highlighted:
+            i.setHighlighted(True)
+
+        self.highlighted = new_highlighted
 
     def wheelEvent(self, event):
         self.setTransformationAnchor(QGraphicsView.AnchorUnderMouse)
