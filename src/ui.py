@@ -3,7 +3,7 @@
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 
-from algorithm import *
+from naive_algorithm import *
 
 class TextView(QGraphicsObject):
     FONT = QFont('DejaVu Sans Mono', 12)
@@ -111,15 +111,13 @@ class SceneView(QGraphicsView):
             self.scene.removeItem(arc)
         self.arcViews = []
 
-        for start, end, width in arc_pairs(text):
+        for start, end, width in essential_matching_pairs(unicode(text)):
             arc = ArcView(start, end, width)
             self.scene.addItem(arc)
             self.arcViews.append(arc)
         self.scene.setSceneRect(self.scene.itemsBoundingRect())
 
     def mouseMoveEvent(self, event):
-        super(QGraphicsView, self).mouseMoveEvent(event)
-
         new_highlighted = set(item for item in self.items(event.pos())
                      if isinstance(item, ArcView) and
                      item.path.contains(item.mapFromScene(self.mapToScene(event.pos()))))
@@ -130,6 +128,8 @@ class SceneView(QGraphicsView):
             i.setHighlighted(True)
 
         self.highlighted = new_highlighted
+
+        return super(QGraphicsView, self).mouseMoveEvent(event)
 
     def wheelEvent(self, event):
         self.setTransformationAnchor(QGraphicsView.AnchorUnderMouse)
