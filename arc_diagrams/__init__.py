@@ -5,7 +5,7 @@ from sys import argv
 
 from PyQt4.QtGui import QApplication
 
-from ui import Window
+from .ui import Window
 
 def run():
     app = QApplication(argv)
