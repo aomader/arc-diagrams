@@ -11,7 +11,7 @@ setup(
     license = 'MIT',
     packages = ['arc_diagrams'],
     entry_points = {
-        'gui_scripts': ['arc-diagrams = arc_diagrams:run'],
+        'gui_scripts': ['arc-diagrams = arc_diagrams:main'],
     }
 )
 

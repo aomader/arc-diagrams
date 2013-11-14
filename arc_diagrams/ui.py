@@ -3,15 +3,15 @@
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 
-from naive_algorithm import *
+from .naive_algorithm import *
 
-class TextView(QGraphicsObject):
+class TextView(QGraphicsItem):
     FONT = QFont('DejaVu Sans Mono', 12)
     PEN = QPen(QColor('#333333'), 1, Qt.SolidLine)
 
-    def __init__(self, text=''):
-        super(QGraphicsObject, self).__init__()
-        self.text = text
+    def __init__(self, *args, **kwargs):
+        super(QGraphicsItem, self).__init__(*args, **kwargs)
+        self.text = ''
 
     def setText(self, text):
         self.text = text
@@ -39,12 +39,12 @@ class TextView(QGraphicsObject):
 
 
 
-class ArcView(QGraphicsObject):
+class ArcView(QGraphicsItem):
     BRUSH = QColor(0, 67, 136, 23)
     BRUSH_HIGHLIGHTED = QColor(255, 0, 0, 150)
 
-    def __init__(self, start, end, width):
-        super(QGraphicsObject, self).__init__()
+    def __init__(self, start, end, width, *args, **kwargs):
+        super(QGraphicsItem, self).__init__(*args, **kwargs)
         inset = SceneView.CHAR_WIDTH / 8.
         outer = (end - start + width) * SceneView.CHAR_WIDTH
         inner = (end - start - width) * SceneView.CHAR_WIDTH
@@ -80,11 +80,12 @@ class SceneView(QGraphicsView):
     CHAR_WIDTH = None
     CHAR_HEIGHT = None
 
-    def __init__(self):
-        super(QGraphicsView, self).__init__()
+    def __init__(self, *args, **kwargs):
+        super(QGraphicsView, self).__init__(*args, **kwargs)
 
-        self.scene = QGraphicsScene()
-        self.setBackgroundBrush(QColor('#f7f7f7'))
+        self.scene = QGraphicsScene(self)
+        self.setBackgroundBrush(QColor('#f1f1f1'))
+        self.setStyleSheet('border: 0;')
 
         self.setScene(self.scene)
         self.setRenderHint(QPainter.Antialiasing)
@@ -140,13 +141,18 @@ class SceneView(QGraphicsView):
 
 
 class Window(QWidget):
-    def __init__(self):
-        super(QWidget, self).__init__()
+    def __init__(self, *args, **kwargs):
+        super(QWidget, self).__init__(*args, **kwargs)
 
         self.setWindowTitle('ArcDiagrams')
         self.resize(800, 600)
 
+        layout = QVBoxLayout(self)
+        layout.setSpacing(0)
+        layout.setMargin(0)
+
         view = SceneView()
+        layout.addWidget(view)
 
         text = QLineEdit()
         text.textChanged.connect(lambda: view.setText(text.text()))
@@ -155,13 +161,12 @@ class Window(QWidget):
         view.setText(initial)
         text.setText(initial)
 
-        layout = QVBoxLayout()
-        layout.setSpacing(0)
-        layout.setMargin(0)
-        layout.addWidget(view)
-        layout.addWidget(text)
+        h = QHBoxLayout()
+        h.addWidget(text)
+        h.setMargin(20)
+        self.setStyleSheet('background-color:#fff;')
+        layout.addLayout(h)
 
-        self.setLayout(layout)
         self.show()
 
 

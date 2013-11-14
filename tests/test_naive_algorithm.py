@@ -1,7 +1,6 @@
 from unittest import TestCase
 
-from naive_algorithm import maximal_matching_pairs, repetition_regions, \
-                            essential_matching_pairs
+from arc_diagrams.naive_algorithm import *
 
 class TestMaximalMatchingPairs(TestCase):
     def test_definition_exampe1(self):
