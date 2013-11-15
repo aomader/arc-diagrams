@@ -10,6 +10,7 @@ from .ui import Window
 def main():
     app = QApplication(argv)
     win = Window()
+    win.show()
     exit(app.exec_())
 
 if __name__ == '__main__':

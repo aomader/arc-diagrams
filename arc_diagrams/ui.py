@@ -5,75 +5,62 @@ from PyQt4.QtGui import *
 
 from .naive_algorithm import *
 
-class TextView(QGraphicsItem):
-    FONT = QFont('DejaVu Sans Mono', 12)
-    PEN = QPen(QColor('#333333'), 1, Qt.SolidLine)
 
+class Window(QWidget):
     def __init__(self, *args, **kwargs):
-        super(QGraphicsItem, self).__init__(*args, **kwargs)
-        self.text = ''
+        super(QWidget, self).__init__(*args, **kwargs)
+        self.setWindowTitle('ArcDiagrams')
+        self.resize(800, 600)
+        self.setStyleSheet('''
+            #top { background: #fff; }
+            QLineEdit { border: 2px solid #eee;
+                        border-radius: 0;
+                        height: 26px;
+                        font-size: 12pt;
+                        color: #666;
+                        padding: 0px 5px;
+                        background: #f7f7f7; }
+            QGraphicsView { border: 0; }
+            QPushButton { border: 0; background: #aaa; color: #fff;
+            font-size:20pt; height: 30px; width:30px;}''')
 
-    def setText(self, text):
-        self.text = text
-        self.prepareGeometryChange()
-        self.update()
+        layout = QVBoxLayout(self)
+        layout.setSpacing(0)
+        layout.setMargin(0)
 
-    def boundingRect(self):
-        return QRectF(0, 0, len(self.text) * SceneView.CHAR_WIDTH,
-                      SceneView.CHAR_HEIGHT + 5)
+        view = SceneView()
 
-    def paint(self, painter, objects, widget):
-        inset = SceneView.CHAR_WIDTH / 8.
-        painter.setPen(TextView.PEN)
-        painter.setFont(TextView.FONT)
-        for i,c in enumerate(self.text):
-            rect = QRectF(i * SceneView.CHAR_WIDTH, 5., SceneView.CHAR_WIDTH,
-                          SceneView.CHAR_HEIGHT)
-            painter.drawText(rect, Qt.AlignCenter | Qt.AlignTop, c)
+        text = QLineEdit()
+        text.textChanged.connect(lambda: view.setText(text.text()))
 
-        painter.setPen(Qt.NoPen)
-        painter.setBrush(QColor(0, 0, 0, 25))
-        for i in range(0, len(self.text)):
-            painter.drawRect(QRectF(i * SceneView.CHAR_WIDTH + inset, 3,
-                                    SceneView.CHAR_WIDTH - 2*inset, 1))
+        initial = '11111000110111001001011110001101110001010'
+        view.setText(initial)
+        text.setText(initial)
 
+        h = QHBoxLayout()
+        h.setMargin(18)
+        h.setSpacing(18)
+        h.addWidget(text)
 
+        zoomOut = QPushButton('-')
+        h.addWidget(zoomOut)
 
-class ArcView(QGraphicsItem):
-    BRUSH = QColor(0, 67, 136, 23)
-    BRUSH_HIGHLIGHTED = QColor(255, 0, 0, 150)
+        zoomIn = QPushButton('+')
+        h.addWidget(zoomIn)
 
-    def __init__(self, start, end, width, *args, **kwargs):
-        super(QGraphicsItem, self).__init__(*args, **kwargs)
-        inset = SceneView.CHAR_WIDTH / 8.
-        outer = (end - start + width) * SceneView.CHAR_WIDTH
-        inner = (end - start - width) * SceneView.CHAR_WIDTH
+        top = QWidget()
+        top.setLayout(h)
+        top.setObjectName('top')
 
-        self.rect = QRectF(0, 0, (end - start + width) * SceneView.CHAR_WIDTH,
-                           (end - start + width) * SceneView.CHAR_WIDTH / 2.)
+        shadow = QGraphicsDropShadowEffect()
+        shadow.setBlurRadius(10)
+        shadow.setOffset(0, 0)
+        shadow.setColor(QColor(0, 0, 0, 50))
+        top.setGraphicsEffect(shadow)
 
-        width = width * SceneView.CHAR_WIDTH
-        self.path = QPainterPath(QPointF(inset, self.rect.bottom()))
-        self.path.arcTo(inset, inset, outer - 2*inset, outer - 2*inset, -180, -180)
-        self.path.lineTo(inner + width + inset, self.rect.bottom())
-        self.path.arcTo(width - inset, width - inset, inner + 2*inset, inner +
-                        2*inset, 0, 180)
-
-        self.highlighted = False
-        self.setPos(start * SceneView.CHAR_WIDTH, -outer / 2.)
-
-    def setHighlighted(self, highlighted):
-        self.highlighted = highlighted
-        self.update()
-
-    def boundingRect(self):
-        return self.rect
-
-    def paint(self, painter, objects, widget):
-        painter.setPen(Qt.NoPen)
-        painter.setBrush(ArcView.BRUSH_HIGHLIGHTED if self.highlighted else
-                ArcView.BRUSH)
-        painter.drawPath(self.path)
+        layout.addWidget(top)
+        layout.addWidget(view)
+        view.stackUnder(top)
 
 
 class SceneView(QGraphicsView):
@@ -82,17 +69,15 @@ class SceneView(QGraphicsView):
 
     def __init__(self, *args, **kwargs):
         super(QGraphicsView, self).__init__(*args, **kwargs)
-
-        self.scene = QGraphicsScene(self)
-        self.setBackgroundBrush(QColor('#f1f1f1'))
-        self.setStyleSheet('border: 0;')
-
-        self.setScene(self.scene)
+        self.setBackgroundBrush(QColor('#f7f7f7'))
         self.setRenderHint(QPainter.Antialiasing)
         self.setRenderHint(QPainter.TextAntialiasing)
         self.setRenderHint(QPainter.HighQualityAntialiasing)
         self.setDragMode(QGraphicsView.ScrollHandDrag)
         self.setMouseTracking(True)
+
+        self.scene = QGraphicsScene(self)
+        self.setScene(self.scene)
 
         metrics = QFontMetrics(TextView.FONT, self)
         SceneView.CHAR_WIDTH = metrics.width('W')
@@ -140,34 +125,73 @@ class SceneView(QGraphicsView):
             self.scale(1.0/1.15, 1.0/1.15)
 
 
-class Window(QWidget):
+class TextView(QGraphicsItem):
+    FONT = QFont('DejaVu Sans Mono', 12)
+    PEN = QPen(QColor('#333333'), 1, Qt.SolidLine)
+
     def __init__(self, *args, **kwargs):
-        super(QWidget, self).__init__(*args, **kwargs)
+        super(QGraphicsItem, self).__init__(*args, **kwargs)
+        self.text = ''
 
-        self.setWindowTitle('ArcDiagrams')
-        self.resize(800, 600)
+    def setText(self, text):
+        self.text = text
+        self.prepareGeometryChange()
+        self.update()
 
-        layout = QVBoxLayout(self)
-        layout.setSpacing(0)
-        layout.setMargin(0)
+    def boundingRect(self):
+        return QRectF(0, 0, len(self.text) * SceneView.CHAR_WIDTH,
+                      SceneView.CHAR_HEIGHT + 5)
 
-        view = SceneView()
-        layout.addWidget(view)
+    def paint(self, painter, objects, widget):
+        inset = SceneView.CHAR_WIDTH / 8.
+        painter.setPen(TextView.PEN)
+        painter.setFont(TextView.FONT)
+        for i,c in enumerate(self.text):
+            rect = QRectF(i * SceneView.CHAR_WIDTH, 5., SceneView.CHAR_WIDTH,
+                          SceneView.CHAR_HEIGHT)
+            painter.drawText(rect, Qt.AlignCenter | Qt.AlignTop, c)
 
-        text = QLineEdit()
-        text.textChanged.connect(lambda: view.setText(text.text()))
+        painter.setPen(Qt.NoPen)
+        painter.setBrush(QColor(0, 0, 0, 25))
+        for i in range(0, len(self.text)):
+            painter.drawRect(QRectF(i * SceneView.CHAR_WIDTH + inset, 3,
+                                    SceneView.CHAR_WIDTH - 2*inset, 1))
 
-        initial = '11111000110111001001011110001101110001010'
-        view.setText(initial)
-        text.setText(initial)
 
-        h = QHBoxLayout()
-        h.addWidget(text)
-        h.setMargin(20)
-        self.setStyleSheet('background-color:#fff;')
-        layout.addLayout(h)
+class ArcView(QGraphicsItem):
+    BRUSH = QColor(0, 67, 136, 23)
+    BRUSH_HIGHLIGHTED = QColor(255, 0, 0, 150)
 
-        self.show()
+    def __init__(self, start, end, width, *args, **kwargs):
+        super(QGraphicsItem, self).__init__(*args, **kwargs)
+        inset = SceneView.CHAR_WIDTH / 8.
+        outer = (end - start + width) * SceneView.CHAR_WIDTH
+        inner = (end - start - width) * SceneView.CHAR_WIDTH
 
+        self.rect = QRectF(0, 0, (end - start + width) * SceneView.CHAR_WIDTH,
+                           (end - start + width) * SceneView.CHAR_WIDTH / 2.)
+
+        width = width * SceneView.CHAR_WIDTH
+        self.path = QPainterPath(QPointF(inset, self.rect.bottom()))
+        self.path.arcTo(inset, inset, outer - 2*inset, outer - 2*inset, -180, -180)
+        self.path.lineTo(inner + width + inset, self.rect.bottom())
+        self.path.arcTo(width - inset, width - inset, inner + 2*inset, inner +
+                        2*inset, 0, 180)
+
+        self.highlighted = False
+        self.setPos(start * SceneView.CHAR_WIDTH, -outer / 2.)
+
+    def setHighlighted(self, highlighted):
+        self.highlighted = highlighted
+        self.update()
+
+    def boundingRect(self):
+        return self.rect
+
+    def paint(self, painter, objects, widget):
+        painter.setPen(Qt.NoPen)
+        painter.setBrush(ArcView.BRUSH_HIGHLIGHTED if self.highlighted else
+                ArcView.BRUSH)
+        painter.drawPath(self.path)
 
 # vim: set expandtab shiftwidth=4 softtabstop=4 textwidth=79:
