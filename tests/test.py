@@ -18,7 +18,7 @@ path.insert(0, test_root)
 suite = defaultTestLoader.loadTestsFromNames(test_names)
 
 def main():
-    result = TextTestRunner(verbosity=1).run(suite)
+    result = TextTestRunner(verbosity=0).run(suite)
     exit(1 if result.errors or result.failures else 0)
 
 if __name__ == '__main__':

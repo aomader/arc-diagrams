@@ -1,5 +1,8 @@
 # -*- coding: utf-8 -*-
 
+from math import sqrt
+from pkg_resources import resource_filename
+
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 
@@ -8,7 +11,7 @@ from .naive_algorithm import *
 
 class Window(QWidget):
     def __init__(self, *args, **kwargs):
-        super(QWidget, self).__init__(*args, **kwargs)
+        super(Window, self).__init__(*args, **kwargs)
         self.setWindowTitle('ArcDiagrams')
         self.resize(800, 600)
         self.setStyleSheet('''
@@ -20,61 +23,122 @@ class Window(QWidget):
                         color: #666;
                         padding: 0px 5px;
                         background: #f7f7f7; }
+            QLabel { color: #544721; background: #fff6bf; border-radius: 8px;
+            border: 2px solid #ffd324;padding: 4px 6px;
+            font-size: 10pt; }
             QGraphicsView { border: 0; }
-            QPushButton { border: 0; background: #aaa; color: #fff;
-            font-size:20pt; height: 30px; width:30px;}''')
+            QPushButton { border:1px solid #ccc; background:#fff; color: #666;
+            outline: none;
+            font-size:16pt; height: 30px; width:30px;}
+            QPushButton:disabled {
+                color:#ccc;
+            }''')
 
-        layout = QVBoxLayout(self)
-        layout.setSpacing(0)
-        layout.setMargin(0)
-
+        # the central ui component
         view = SceneView()
 
+        # top bar
         text = QLineEdit()
         text.textChanged.connect(lambda: view.setText(text.text()))
-
-        initial = '11111000110111001001011110001101110001010'
-        view.setText(initial)
-        text.setText(initial)
-
-        h = QHBoxLayout()
-        h.setMargin(18)
-        h.setSpacing(18)
-        h.addWidget(text)
-
-        zoomOut = QPushButton('-')
-        h.addWidget(zoomOut)
-
-        zoomIn = QPushButton('+')
-        h.addWidget(zoomIn)
-
-        top = QWidget()
-        top.setLayout(h)
-        top.setObjectName('top')
-
+        topLayout = QHBoxLayout(); topLayout.setMargin(18); topLayout.setSpacing(18)
+        topLayout.addWidget(text)
+        top = QWidget(); top.setLayout(topLayout); top.setObjectName('top')
         shadow = QGraphicsDropShadowEffect()
         shadow.setBlurRadius(10)
         shadow.setOffset(0, 0)
         shadow.setColor(QColor(0, 0, 0, 50))
         top.setGraphicsEffect(shadow)
 
+        # main layout containing input and graphics view
+        layout = QVBoxLayout(self); layout.setSpacing(0); layout.setMargin(0)
         layout.addWidget(top)
         layout.addWidget(view)
         view.stackUnder(top)
+
+        # info label
+        infoLabel = QLabel()
+        view.infoText.connect(infoLabel.setText)
+        view.infoText.connect(lambda x: infoLabel.show() if x != '' else
+                                        infoLabel.hide())
+
+        # detail buttons
+        detailsOut = QPushButton('-')
+        detailsOut.setStyleSheet('''border-top-left-radius:10px;
+                border-bottom-left-radius:10px; border-right:0;''')
+        detailsOut.clicked.connect(lambda: view.setDetails(1))
+        detailsIn = QPushButton('+')
+        detailsIn.setStyleSheet('''border-top-right-radius:10px;
+                border-bottom-right-radius:10px; border-left:0;''')
+        detailsIn.clicked.connect(lambda: view.setDetails(-1))
+        details = QPushButton()
+        details.setStyleSheet('border-left:0; border-right:0;')
+        details.setIcon(QIcon(resource_filename(__name__, 'pixmaps/details.png')))
+        details.setIconSize(QSize(30, 30))
+        details.clicked.connect(lambda: view.setDetails(None))
+        view.canIncreaseDetails.connect(detailsIn.setEnabled)
+        view.canDecreaseDetails.connect(detailsOut.setEnabled)
+
+        # zoom buttons
+        zoomOut = QPushButton('-')
+        zoomOut.setStyleSheet(detailsOut.styleSheet())
+        zoomOut.clicked.connect(lambda: view.setZoom(-1))
+        zoomIn = QPushButton('+')
+        zoomIn.setStyleSheet(detailsIn.styleSheet())
+        zoomIn.clicked.connect(lambda: view.setZoom(+1))
+        zoom = QPushButton()
+        zoom.setStyleSheet(details.styleSheet())
+        zoom.setIcon(QIcon(resource_filename(__name__, 'pixmaps/zoom.png')))
+        zoom.setIconSize(QSize(30, 30))
+        zoom.clicked.connect(lambda: view.setZoom(None))
+
+        # layout containing info text, zoom and detail buttons
+        bottomLayout = QHBoxLayout(); bottomLayout.setMargin(18)
+        bottomLayout.setSpacing(0)
+        bottomLayout.addWidget(infoLabel)
+        bottomLayout.addStretch()
+        bottomLayout.addWidget(detailsOut)
+        bottomLayout.addWidget(details)
+        bottomLayout.addWidget(detailsIn)
+        bottomLayout.addSpacing(25)
+        bottomLayout.addWidget(zoomOut)
+        bottomLayout.addWidget(zoom)
+        bottomLayout.addWidget(zoomIn)
+        self.bottom = QWidget(self); self.bottom.setLayout(bottomLayout)
+
+        initial = '11111000110111001001011110001101110001010'
+        view.setText(initial)
+        text.setText(initial)
+
+    def setInfo(self, info):
+        if info is None:
+            self.infoLabel.hide()
+        else:
+            self.infoLabel.setText(info)
+            self.infoLabel.show()
+
+    def resizeEvent(self, event):
+        super(Window, self).resizeEvent(event)
+        self.bottom.setGeometry(0, self.size().height() - 66,
+                self.size().width(), 66)
 
 
 class SceneView(QGraphicsView):
     CHAR_WIDTH = None
     CHAR_HEIGHT = None
 
+    canIncreaseDetails = pyqtSignal(bool)
+    canDecreaseDetails = pyqtSignal(bool)
+    infoText = pyqtSignal(str)
+
     def __init__(self, *args, **kwargs):
-        super(QGraphicsView, self).__init__(*args, **kwargs)
+        super(SceneView, self).__init__(*args, **kwargs)
         self.setBackgroundBrush(QColor('#f7f7f7'))
         self.setRenderHint(QPainter.Antialiasing)
         self.setRenderHint(QPainter.TextAntialiasing)
-        self.setRenderHint(QPainter.HighQualityAntialiasing)
+        self.setTransformationAnchor(QGraphicsView.AnchorUnderMouse)
         self.setDragMode(QGraphicsView.ScrollHandDrag)
-        self.setMouseTracking(True)
+        self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
 
         self.scene = QGraphicsScene(self)
         self.setScene(self.scene)
@@ -84,53 +148,127 @@ class SceneView(QGraphicsView):
         SceneView.CHAR_HEIGHT = metrics.height()
 
         self.textView = TextView()
-        self.arcViews = []
-
-        self.highlighted = set()
-
+        self.arcViews = {}
         self.scene.addItem(self.textView)
+
+        self.detailLevels = []
+        self.details = 0
+        self.highlighted = None
+        self.marked = None
+        self.pressedAt = None
 
     def setText(self, text):
         self.textView.setText(text)
 
-        for arc in self.arcViews:
-            self.scene.removeItem(arc)
-        self.arcViews = []
+        for info in self.arcViews.itervalues():
+            for arc in info['arcs']:
+                self.scene.removeItem(arc)
 
-        for start, end, width in essential_matching_pairs(unicode(text)):
-            arc = ArcView(start, end, width)
+        self.detailLevels = set()
+        self.arcViews = {}
+
+        text = unicode(text)
+        for x,y,l in essential_matching_pairs(text):
+            sub = text[x:x+l]
+
+            if sub not in self.arcViews:
+                self.arcViews[sub] = {'arcs': [], 'xs': set()}
+
+            arc = ArcView(x, y, l)
+            arc.sub = sub
+
+            info = self.arcViews[sub]
+            info['arcs'].append(arc)
+            info['xs'].update([x, y])
+            self.detailLevels.add(l)
             self.scene.addItem(arc)
-            self.arcViews.append(arc)
+
+        self.detailLevels = sorted(self.detailLevels)
         self.scene.setSceneRect(self.scene.itemsBoundingRect())
+        self.infoText.emit('')
+        self.setZoom(None)
+        self.setDetails(None)
+    
+    def setDetails(self, level):
+        level = 0 if level is None else self.details + level
+        self.details = min(max(level, 0), len(self.detailLevels))
+        for k,v in self.arcViews.iteritems():
+            for arc in v['arcs']:
+                arc.setVisible(len(k) >= self.detailLevels[self.details])
+        self.canIncreaseDetails.emit(self.details > 0)
+        self.canDecreaseDetails.emit(self.details < len(self.detailLevels) - 1)
+        if self.marked and len(self.marked) < self.detailLevels[self.details]:
+            self.setMarked(None)
+
+    def setZoom(self, level):
+        if level is None:
+            self.fitInView(self.scene.sceneRect(), Qt.KeepAspectRatio)
+            level = 1/1.15
+        else:
+            level = 1.15 if level == 1 else 1/1.15
+        self.scale(level, level)
+
+    def setMarked(self, arc):
+        if (not arc or arc.sub != self.marked) and self.marked in \
+                                                   self.arcViews:
+            for a in self.arcViews[self.marked]['arcs']:
+                a.setMarked(False)
+            self.infoText.emit('')
+        if arc and arc.sub != self.marked:
+            self.marked = arc.sub
+            for a in self.arcViews[self.marked]['arcs']:
+                a.setMarked(True)
+            self.infoText.emit('Substring "%s" appears %i times.' %
+                    (arc.sub, len(self.arcViews[arc.sub]['xs'])))
+        self.marked = arc.sub if arc else None
+
+    def mousePressEvent(self, event):
+        self.pressedAt = event.pos()
+        return super(SceneView, self).mousePressEvent(event)
 
     def mouseMoveEvent(self, event):
-        new_highlighted = set(item for item in self.items(event.pos())
-                     if isinstance(item, ArcView) and
-                     item.path.contains(item.mapFromScene(self.mapToScene(event.pos()))))
+        super(SceneView, self).mouseMoveEvent(event)
+        if not self.pressedAt:
+            highlighted = self.arcFromPoint(event.pos())
+            if highlighted != self.highlighted:
+                self.highlighted and self.highlighted.setHighlighted(False)
+                highlighted and highlighted.setHighlighted(True)
+                self.highlighted = highlighted
 
-        for i in self.highlighted - new_highlighted:
-            i.setHighlighted(False)
-        for i in new_highlighted - self.highlighted:
-            i.setHighlighted(True)
-
-        self.highlighted = new_highlighted
-
-        return super(QGraphicsView, self).mouseMoveEvent(event)
+    def mouseReleaseEvent(self, event):
+        if self.distance(self.pressedAt, event.pos()) < 8:
+            arc = self.arcFromPoint(self.pressedAt)
+            self.setMarked(arc)
+        self.pressedAt = None
+        return super(SceneView, self).mouseReleaseEvent(event)
 
     def wheelEvent(self, event):
-        self.setTransformationAnchor(QGraphicsView.AnchorUnderMouse)
-        if event.delta() > 0:
-            self.scale(1.15, 1.15)
-        else:
-            self.scale(1.0/1.15, 1.0/1.15)
+        self.setZoom(+1 if event.delta() > 0 else -1)
+
+    def arcFromPoint(self, point):
+        arc = None
+        dist = self.scene.sceneRect().width()
+        for item in self.items(point):
+            p = item.mapFromScene(self.mapToScene(point))
+            if isinstance(item, ArcView) and item.isVisible() and \
+                    item.path.contains(p):
+                d = self.distance(p, item.center)
+                if d < dist:
+                    dist = d
+                    arc = item
+        return arc
+
+    def distance(self, p1, p2):
+        return sqrt((p1.x() - p2.x())**2 + (p1.y() - p2.y())**2)
 
 
 class TextView(QGraphicsItem):
     FONT = QFont('DejaVu Sans Mono', 12)
     PEN = QPen(QColor('#333333'), 1, Qt.SolidLine)
+    BRUSH_MARKED = QColor(214, 233, 0, 150)
 
     def __init__(self, *args, **kwargs):
-        super(QGraphicsItem, self).__init__(*args, **kwargs)
+        super(TextView, self).__init__(*args, **kwargs)
         self.text = ''
 
     def setText(self, text):
@@ -160,29 +298,36 @@ class TextView(QGraphicsItem):
 
 class ArcView(QGraphicsItem):
     BRUSH = QColor(0, 67, 136, 23)
-    BRUSH_HIGHLIGHTED = QColor(255, 0, 0, 150)
+    BRUSH_HIGHLIGHTED = QColor(200, 0, 0, 100)
+    BRUSH_MARKED_HIGHLIGHTED = QColor(200, 0, 0, 150)
 
     def __init__(self, start, end, width, *args, **kwargs):
-        super(QGraphicsItem, self).__init__(*args, **kwargs)
+        super(ArcView, self).__init__(*args, **kwargs)
         inset = SceneView.CHAR_WIDTH / 8.
         outer = (end - start + width) * SceneView.CHAR_WIDTH
         inner = (end - start - width) * SceneView.CHAR_WIDTH
-
-        self.rect = QRectF(0, 0, (end - start + width) * SceneView.CHAR_WIDTH,
-                           (end - start + width) * SceneView.CHAR_WIDTH / 2.)
-
         width = width * SceneView.CHAR_WIDTH
+
+        self.rect = QRectF(0, 0, outer, outer / 2.)
         self.path = QPainterPath(QPointF(inset, self.rect.bottom()))
         self.path.arcTo(inset, inset, outer - 2*inset, outer - 2*inset, -180, -180)
         self.path.lineTo(inner + width + inset, self.rect.bottom())
         self.path.arcTo(width - inset, width - inset, inner + 2*inset, inner +
                         2*inset, 0, 180)
+        self.center = QPointF(outer / 2., (outer - inner) / 4.)
+        self.setPos(start * SceneView.CHAR_WIDTH, -outer / 2.)
 
         self.highlighted = False
-        self.setPos(start * SceneView.CHAR_WIDTH, -outer / 2.)
+        self.marked = False
 
     def setHighlighted(self, highlighted):
         self.highlighted = highlighted
+        self.setZValue(1 if highlighted or self.marked else 0)
+        self.update()
+
+    def setMarked(self, marked):
+        self.marked = marked
+        self.setZValue(1 if self.highlighted or marked else 0)
         self.update()
 
     def boundingRect(self):
@@ -190,8 +335,12 @@ class ArcView(QGraphicsItem):
 
     def paint(self, painter, objects, widget):
         painter.setPen(Qt.NoPen)
-        painter.setBrush(ArcView.BRUSH_HIGHLIGHTED if self.highlighted else
-                ArcView.BRUSH)
+        if self.highlighted and self.marked:
+            painter.setBrush(ArcView.BRUSH_MARKED_HIGHLIGHTED)
+        elif self.highlighted or self.marked:
+            painter.setBrush(ArcView.BRUSH_HIGHLIGHTED)
+        else:
+            painter.setBrush(ArcView.BRUSH)
         painter.drawPath(self.path)
 
 # vim: set expandtab shiftwidth=4 softtabstop=4 textwidth=79:
