@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from math import sqrt
+from multiprocessing import Process, Queue
 from pkg_resources import resource_filename
 
 from PyQt4.QtCore import *
@@ -105,9 +106,24 @@ class Window(QWidget):
         bottomLayout.addWidget(zoomIn)
         self.bottom = QWidget(self); self.bottom.setLayout(bottomLayout)
 
-        initial = '11111000110111001001011110001101110001010'
-        view.setText(initial)
-        text.setText(initial)
+        # loading
+        #movie = QMovie(resource_filename(__name__, 'pixmaps/loading.gif'),
+        #               QByteArray(), self)
+        #movie.setCacheMode(QMovie.CacheAll)
+        #movie.setSpeed(150)
+        #movie_screen = QLabel(self)
+        #movie_screen.setStyleSheet('''background: transparent; border: 0;
+        #padding: 0; margin: 0;
+        #        ''')
+        #movie_screen.setSizePolicy(QSizePolicy.Expanding,
+        #         QSizePolicy.Expanding)
+        #movie_screen.setAlignment(Qt.AlignCenter)
+        #movie_screen.setMovie(movie)
+        #movie.start()
+        #movie_screen.move(300, 300)
+        #movie_screen.resize(124, 128)
+
+        text.setText('11111000110111001001011110001101110001010')
 
     def setInfo(self, info):
         if info is None:
@@ -122,6 +138,40 @@ class Window(QWidget):
                 self.size().width(), 66)
 
 
+class Worker(QObject):
+    arcsReady = pyqtSignal(dict)
+
+    @pyqtSlot(unicode)
+    def findArcs(self, text):
+        text = unicode(text)
+
+        queue = Queue()
+        process = Process(target=self.solve, args=(text, queue))
+        process.start()
+        while process.is_alive():
+            if not self.running:
+                return process.terminate()
+            process.join(0.001)
+
+        infos = {}
+        for x,y,l in queue.get():
+            if not self.running:
+                return
+            sub = text[x:x+l]
+            if sub not in infos:
+                infos[sub] = {'arcs': [], 'xs': set()}
+            arc = ArcView(x, y, l)
+            arc.sub = sub
+            info = infos[sub]
+            info['arcs'].append(arc)
+            info['xs'].update([x, y])
+
+        self.arcsReady.emit(infos)
+
+    def solve(self, text, queue):
+        queue.put(list(essential_matching_pairs(text)))
+
+
 class SceneView(QGraphicsView):
     CHAR_WIDTH = None
     CHAR_HEIGHT = None
@@ -129,6 +179,7 @@ class SceneView(QGraphicsView):
     canIncreaseDetails = pyqtSignal(bool)
     canDecreaseDetails = pyqtSignal(bool)
     infoText = pyqtSignal(str)
+    findingArcs = pyqtSignal(bool)
 
     def __init__(self, *args, **kwargs):
         super(SceneView, self).__init__(*args, **kwargs)
@@ -156,38 +207,47 @@ class SceneView(QGraphicsView):
         self.highlighted = None
         self.marked = None
         self.pressedAt = None
+        self.workerThread = None
 
     def setText(self, text):
-        self.textView.setText(text)
+        self.text = text
+        self.setEnabled(False)
 
+        if self.workerThread is not None and self.workerThread.isRunning():
+            self.worker.arcsReady.disconnect(self.update)
+            self.worker.running = False
+            self.workerThread.quit()
+            self.workerThread.wait()
+
+        self.workerThread = QThread()
+        self.worker = Worker()
+        self.worker.running = True
+        self.worker.moveToThread(self.workerThread)
+        self.worker.arcsReady.connect(self.update)
+        self.workerThread.start()
+
+        QMetaObject.invokeMethod(self.worker, "findArcs",
+            Qt.QueuedConnection, Q_ARG(unicode, unicode(text)))
+
+    @pyqtSlot(dict)
+    def update(self, arcs):
         for info in self.arcViews.itervalues():
             for arc in info['arcs']:
                 self.scene.removeItem(arc)
 
-        self.detailLevels = set()
-        self.arcViews = {}
+        self.textView.setText(self.text)
 
-        text = unicode(text)
-        for x,y,l in essential_matching_pairs(text):
-            sub = text[x:x+l]
-
-            if sub not in self.arcViews:
-                self.arcViews[sub] = {'arcs': [], 'xs': set()}
-
-            arc = ArcView(x, y, l)
-            arc.sub = sub
-
-            info = self.arcViews[sub]
-            info['arcs'].append(arc)
-            info['xs'].update([x, y])
-            self.detailLevels.add(l)
-            self.scene.addItem(arc)
-
-        self.detailLevels = sorted(self.detailLevels)
-        self.scene.setSceneRect(self.scene.itemsBoundingRect())
+        self.marked = None
         self.infoText.emit('')
+        self.arcViews = arcs
+        self.detailLevels = sorted(set(len(s) for s in arcs.iterkeys()))
+        for info in arcs.itervalues():
+            for arc in info['arcs']:
+                self.scene.addItem(arc)
+        self.scene.setSceneRect(self.scene.itemsBoundingRect())
         self.setZoom(None)
         self.setDetails(None)
+        self.setEnabled(True)
     
     def setDetails(self, level):
         level = 0 if level is None else self.details + level
