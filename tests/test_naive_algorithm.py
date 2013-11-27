@@ -58,7 +58,7 @@ class TestMaximalMatchingPairs:
                      (17, 18, 1)])
 
     def verify(self, string, expected):
-        result = sorted(list(maximal_matching_pairs(string)))
+        result = sorted(maximal_matching_pairs(string))
         assert result == sorted(expected)
 
 

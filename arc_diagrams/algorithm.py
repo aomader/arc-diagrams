@@ -1,40 +1,22 @@
 # -*- coding: utf-8 -*-
 
-def maximal_matching_pairs(string):
+from suffix_tree import SuffixTree
+
+def maximal_matching_pairs(tree):
     """
     Find all substring pairs fulfilling the properties specified in
     definition 1, namely _identical_, _non-overlapping_, _consecutive_ and
     _maximal_.
 
     Args:
-        string (str): The string to be searched.
+        tree (SuffixTree): A suffix tree, build from the string to be searched.
 
     Returns:
         list. A list of tuples, each describing one matching pair as composed
               of the start of the first and the second substring, as well as
               the length of the substring.
     """
-    n = len(string)
-    pairs = []
-
-    for x in range(0, n - 1):
-        for l in range(int((n - x)/2) + 1, 0, -1):
-            c = string[x:x+l]
-
-            y = string.find(c, x + l)
-
-            # not found or not consecutive
-            if y == -1 or string.find(c, x + 1, y) != -1:
-                continue
-
-            # not maximal
-            if any(x1 <= x <= x1 + l1 - l and y1 <= y <= y1 + l1 - l
-                   for x1,y1,l1 in pairs):
-                continue
-
-            pairs.append((x, y, l))
-
-    return pairs
+    return []
 
 
 def repetition_regions(string):
@@ -46,7 +28,7 @@ def repetition_regions(string):
          containing R, with the fundamental substring P' containing P.
 
     Args:
-        string (str): The string to be searched.
+        tree (SuffixTree): A suffix tree, build from the string to be searched.
 
     Returns:
         list. A list of tuples, each describing one repetition region build
@@ -54,23 +36,7 @@ def repetition_regions(string):
               the region, the end of the region not inclusive and the length
               of the fundamental substring, respectively.
     """
-    n = len(string)
-    s = 0
-    regions = []
-    while s < n - 1:
-        for l in range(1, (n - s)/2 + 1):
-            candidate = string[s:s+l]
-
-            end = s + l
-            while string.find(candidate, end, end + l) == end:
-                end += l
-
-            if end != s + l:
-                regions.append((s, end, len(candidate)))
-                s = end - 1
-                break
-        s += 1
-    return regions
+    return []
 
 
 def essential_matching_pairs(string):
@@ -86,10 +52,12 @@ def essential_matching_pairs(string):
                    of the start of the first and the second substring, as well
                    as the length of the substring.
     """
-    regions = repetition_regions(string)
+    tree = SuffixTree(string)
+
+    regions = repetition_regions(tree)
 
     # definition 3.1 and 3.2
-    for x,y,l in maximal_matching_pairs(string):
+    for x,y,l in maximal_matching_pairs(tree):
         if not any(x >= r and y + l <= e for r,e,_ in regions) or \
            any(int((x - r)/f) == int((y + l - r - 1)/f) for r,_,f in regions):
             yield (x, y, l)
