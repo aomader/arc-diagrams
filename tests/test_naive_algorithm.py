@@ -7,23 +7,23 @@ from arc_diagrams.naive_algorithm import *
 class TestMaximalMatchingPairs:
     @mark.randomize(s=str, str_attrs=('digits',), max_length=50, ncalls=100)
     def test_identical(self, s):
-        for x,y,l in maximal_matching_pairs(s):
+        for x,y,l in self.generate(s):
             assert s[x:x+l] == s[y:y+l]
 
     @mark.randomize(s=str, str_attrs=('digits',), max_length=50, ncalls=100)
     def test_nonoverlapping(self, s):
-        for x,y,l in maximal_matching_pairs(s):
+        for x,y,l in self.generate(s):
             assert x + l <= y
 
     @mark.randomize(s=str, str_attrs=('digits',), max_length=50, ncalls=100)
     def test_consecutive(self, s):
-        for x,y,l in maximal_matching_pairs(s):
+        for x,y,l in self.generate(s):
             assert s.find(s[x:x+l], x+1, y) == -1
 
     @mark.randomize(s=str, str_attrs=('digits',), max_length=50, ncalls=100)
     def test_maximal(self, s):
         n = len(s)
-        for x,y,l in maximal_matching_pairs(s):
+        for x,y,l in self.generate(s):
             for i,j in islice(product(range(x + 1), range(y - x - l + 1)), 1, None):
                 sub = s[x-i:x+l+j]
                 idx = s.find(sub, x+l+j)
@@ -58,20 +58,23 @@ class TestMaximalMatchingPairs:
                      (17, 18, 1)])
 
     def verify(self, string, expected):
-        result = sorted(maximal_matching_pairs(string))
+        result = sorted(self.generate(string))
         assert result == sorted(expected)
+
+    def generate(self, string):
+        return maximal_matching_pairs(string)
 
 
 class TestRepetitionRegions:
     @mark.randomize(s=str, str_attrs=('digits',), max_length=50, ncalls=100)
     def test_successive(self, s):
-        for r,n,l in repetition_regions(s):
+        for r,n,l in self.generate(s):
             assert (n - r) % l == 0 and n <= len(s)
             assert len(set(s[x:x+l] for x in range(r, n, l))) == 1
 
     @mark.randomize(s=str, str_attrs=('digits',), max_length=50, ncalls=100)
     def test_minimal(self, s):
-        for r,n,l in repetition_regions(s):
+        for r,n,l in self.generate(s):
             assert (n - r) % l == 0 and n <= len(s)
             assert len(set(s[x:x+l] for x in range(r, n, l))) == 1
 
@@ -96,8 +99,11 @@ class TestRepetitionRegions:
                      (34, 37, 1)])
 
     def verify(self, string, expected):
-        result = sorted(repetition_regions(string))
+        result = sorted(self.generate(string))
         assert result == sorted(expected)
+
+    def generate(self, string):
+        return repetition_regions(string)
 
 
 class TestEssentialMatchingPairs:
