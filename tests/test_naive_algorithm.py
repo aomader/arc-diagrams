@@ -18,7 +18,9 @@ class TestMaximalMatchingPairs:
     @mark.randomize(s=str, str_attrs=('digits',), max_length=50, ncalls=100)
     def test_consecutive(self, s):
         for x,y,l in self.generate(s):
-            assert s.find(s[x:x+l], x+1, y) == -1
+            i = s.find(s[x:x+l], x+1, y+l)
+            print (x, y, l)
+            assert i == -1 or i == y
 
     @mark.randomize(s=str, str_attrs=('digits',), max_length=50, ncalls=100)
     def test_maximal(self, s):
@@ -35,27 +37,24 @@ class TestMaximalMatchingPairs:
     def test_example2(self):
         self.verify('123a123', [(0, 4, 3)])
 
-    def test_example2(self):
-        self.verify('10101010', [(0, 4, 4), (0, 2, 2), (4, 6, 2), (1, 3, 2),
-                                 (3, 5, 2)])
-
     def test_example3(self):
+        self.verify('10101010', [(0, 2, 2), (4, 6, 2), (1, 3, 2), (3, 5, 2)])
+
+    def test_example4(self):
         self.verify('28746391479735648274639137',
                     [(0, 17, 1), (1, 16, 1), (2, 18, 6), (2, 9, 1), (3, 8, 1),
                      (4, 14, 1), (5, 12, 1), (6, 10, 1), (8, 15, 1), (9, 11, 1),
                      (10, 22, 1), (11, 18, 1), (12, 21, 1), (14, 20, 1),
                      (15, 19, 1), (18, 25, 1), (21, 24, 1)])
 
-    def test_example4(self):
+    def test_example5(self):
         self.verify('1234567abcde1234567fghij1234567',
                     [(0, 12, 7), (12, 24, 7)])
 
-    def test_example5(self):
+    def test_example6(self):
         self.verify('abcd111110000011111abcd',
-                    [(0, 19, 4), (4, 14, 5), (4, 6, 2), (4, 5, 1), (7, 8, 1),
-                     (5, 7, 2), (9, 11, 2), (9, 10, 1), (12, 13, 1),
-                     (10, 12, 2), (14, 16, 2), (15, 17, 2), (14, 15, 1),
-                     (17, 18, 1)])
+                    [(0, 19, 4), (4, 14, 5), (4, 5, 1), (7, 8, 1), (9, 10, 1),
+                     (12, 13, 1), (14, 15, 1), (17, 18, 1)])
 
     def verify(self, string, expected):
         result = sorted(self.generate(string))
