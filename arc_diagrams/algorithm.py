@@ -1,6 +1,16 @@
 # -*- coding: utf-8 -*-
 
+from collections import defaultdict
+from itertools import product, islice
+
 from suffix_tree import SuffixTree
+
+__all__ = [
+    'maximal_matching_pairs',
+    'repetition_regions',
+    'essential_matching_pairs'
+]
+
 
 def maximal_matching_pairs(tree):
     """
@@ -12,11 +22,66 @@ def maximal_matching_pairs(tree):
         tree (SuffixTree): A suffix tree, build from the string to be searched.
 
     Returns:
-        list. A list of tuples, each describing one matching pair as composed
-              of the start of the first and the second substring, as well as
-              the length of the substring.
+        generator. A generator of tuples, each describing one matching pair as
+                   composed of the start of the first and the second substring,
+                   as well as the length of the substring.
     """
-    return []
+    string = tree.string
+    substrings = defaultdict(set)
+
+    # get all substring starts repeated at least once
+    for leaf in tree.leaves:
+        node = leaf.parent
+        end = leaf.start
+        while node is not None and \
+              end - len(node.pathLabel) not in substrings[node.pathLabel] and \
+              node.edgeLabel != '':
+            for i in range(len(node.pathLabel)):
+                substrings[node.pathLabel[:i+1]].add(end - len(node.pathLabel))
+            end -= len(node.edgeLabel)
+            node = node.parent
+
+    def contained(i, j, l, cs):
+        for c in cs:
+            xs = []
+            ys = []
+
+            for s in sorted(substrings[c]):
+                if s <= i and s + len(c) >= i + l:
+                    xs.append(s)
+                if s <= j and s + len(c) >= j + l:
+                    ys.append(s)
+
+            for a,b in product(xs, ys):
+                if a + len(c) <= b:
+                    return True
+        return False
+
+    # apply constraints and yield legit pairs
+    for sub, starts in substrings.iteritems():
+        starts = sorted(starts)
+        cs = [k for k in substrings if len(k) > len(sub) and
+              k.startswith(sub) and k.endswith(sub)]
+        l = len(sub)
+        for x, y in zip(starts, islice(starts, 1, None)):
+            # overlapping
+            if x + l > y:
+                continue
+
+            # non maximum: left expansion
+            if x > 0 and x + l < y and string[x-1] == string[y-1]:
+                continue
+
+            # non maximum: right expansion
+            if y + l < len(string) and x + l < y and string[x+l] == string[y+l]:
+                continue
+
+            # not maximum: inner/outer expansion
+            # TODO: There has to be a better way!
+            if contained(x, y, l, cs):
+                continue
+
+            yield x, y, l
 
 
 def repetition_regions(string):
@@ -66,5 +131,13 @@ def essential_matching_pairs(string):
     for r,e,l in regions:
         for x in range(r, e - l, l):
             yield (x, x + l, l)
+
+
+def children(node):
+    """ Returns a generator to iterate all direct node children. """
+    c = node.firstChild
+    while c is not None:
+        yield c
+        c = c.next
 
 # vim: set expandtab shiftwidth=4 softtabstop=4 textwidth=79:
