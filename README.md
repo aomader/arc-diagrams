@@ -40,7 +40,9 @@ tests.
 ## Mistakes
 
 During the development I encountered a few mistakes within the examples and
-definitions given by Wattenberg in his [paper](docs/arc-diagrams.pdf).
+definitions given by Wattenberg in his [paper](docs/arc-diagrams.pdf). Using
+the original definition I wasn't able to reproduce the examples images
+shown in the paper.
 
 ### Page 2: Second example of Definition 1 ("10101010")
 
@@ -100,6 +102,16 @@ _essential matching pair_. But that obviously doesn't make any sense and we can
 also approve that by looking at the example images shown in the paper.
 Therefore the author implicitly used some sort of _minimality_ property, but
 didn't mention it in the specification.
+
+It's also not clear how repetition regions are handled that are somewhat equal
+but off by a small amount. For example the string "01010" would contain two
+region, "01" repeated 2 times starting at 0 and "10" also repeated 2 times
+starting at index 1. Nevertheless it doesn't make any sense to use both,
+describe nearly the same repeating area with nearly the same _fundamental
+substring_.
+
+So you see there are at least two more properties missing, which further
+define a _repetition region_.
 
 [arc diagrams]: http://innovis.cpsc.ucalgary.ca/innovis/uploads/Courses/InformationVisualizationDetails2009/Wattenberg2002.pdf
 [suffix_tree]: http://cs.au.dk/~mailund/suffix_tree.html
