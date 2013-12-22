@@ -1,5 +1,88 @@
 # arc-diagrams
 
-An Qt4 and Python powered implementation of [arc diagrams].
+A Python powered implementation of [arc diagrams], a visualization method
+proposed by Martin Wattenberg, that is capable of representing complex patterns
+of repetition in string data.
+
+## Requirements
+
+The software has been run and tested with the following versions. It might work
+with older or newer ones, but we can't say that for sure.
+
+* Python >= 2.7
+* PyQt4 == 4.10.3
+* [suffix_tree] == 2.1
+
+## Installation
+
+In order to install the software, you have to ensure that you got a proper
+version of Python and PyQt4 installed. If that is ensured you install the
+package by running the following command:
+
+```bash
+# python setup.py install
+```
+
+Once you installed the software you can simply startup the GUI by running
+`arc-diagrams`.
+
+## Tests
+
+If you are eager and want to run the tests you can do so by executing the
+setup.py's test command. That might also install pytest and pytest-quickcheck,
+since these packages are required in order to run the tests.
+
+```bash
+# python setup.py test
+```
+
+## Mistakes
+
+During the development I encountered a few mistakes within the examples and
+definitions given by Wattenberg in the [paper](docs/arc-diagrams.pdf).
+
+### Page 2: Second example of Definition 1 ("10101010")
+
+The author states, that the string "10101010" contains only one maximal
+matching pair, namely the substring "1010" located at index 0 and 4.
+That is incorrect, since this particular pair is _not_ a maximal matching one
+due to definition 1.3: There exists an identical substring lying at index 2
+between the beginning of the first and the beginning of the second substring.
+
+It's also incorrect to say, that there is only one maximal matching
+pair. By looking at the specification we can find four pairs satisfying all
+properties:
+
+Substring | Index First | Index Second
+--- | --- | ---
+"10" | 0 | 2
+"10" | 4 | 6
+"01" | 1 | 3
+"01" | 3 | 5
+
+Although the substring "1010" at index 0 and 4 is not a maximal matching pair,
+it effectively blocks the definition of substring "10" at index 2 and 4 being
+a maximal matching pair. That's because of the maximality property
+(definition 1.4), which doesn't specify that the superior subsequences have to
+be _consecutive_.
+
+That leads to two conclusions: Either the property _consecutive_ is incorrectly
+specified and it should instead be limited to an exclusive area:
+
+    1.3: _Consecutive_: _X_ occurs before _Y_, and there is no substring Z,
+    identical to X and Y, **whose beginning is located after the end of X and
+    its ending is located before the beginning of Y.**
+
+Or the _maximality_ property should include the _consecutive_ property:
+
+    1.4: _Maximal_: There do not exist longer identical non-overlapping
+    **consecutive** subsequences _X'_ and _Y'_ with _X'_ containing _X_ and
+    _Y'_ containing **_Y_**.
+
+The adapted parts are marked bold.
+
+One has to note, that both adaptations lead to different results and it's not
+clear which one is superior.
 
 [arc diagrams]: http://innovis.cpsc.ucalgary.ca/innovis/uploads/Courses/InformationVisualizationDetails2009/Wattenberg2002.pdf
+[suffix_tree]: http://cs.au.dk/~mailund/suffix_tree.html
