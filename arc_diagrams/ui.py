@@ -8,7 +8,7 @@ from pkg_resources import resource_filename
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 
-from .naive_algorithm import essential_matching_pairs
+from .naive_algorithm import *
 
 
 class Window(QWidget):

@@ -69,7 +69,7 @@ a maximal matching pair. That's because of the maximality property
 (definition 1.4), which doesn't specify that the superior subsequences have to
 be _consecutive_.
 
-That leads to two conclusions: Either the property _consecutive_ is incorrectly
+That leads to three conclusions: Either the property _consecutive_ is incorrectly
 specified and it should instead be limited to an exclusive area:
 
 > 1.3: _Consecutive_: _X_ occurs before _Y_, and there is no substring Z,
@@ -81,6 +81,8 @@ Or the _maximality_ property should include the _consecutive_ property:
 > 1.4: _Maximal_: There do not exist longer identical non-overlapping
 > **consecutive** subsequences _X'_ and _Y'_ with _X'_ containing _X_ and
 > _Y'_ containing **_Y_**.
+
+Or it's simply a bad example.
 
 One has to note, that both adaptations lead to different results and it's not
 clear which one is superior (the adapted parts are marked bold).
@@ -117,14 +119,6 @@ define a _repetition region_.
 
 Due to the above mentioned problems with the specifications stated in the
 paper, I use the following ones instead.
-
-### Maximal Matching Pair
-
-I use the adapted version of definition 1.3 presented in the previous chapter.
-
-> 1.3: _Consecutive_: _X_ occurs before _Y_, and there is no substring Z,
-> identical to X and Y, **whose beginning is located after the end of X and
-> its ending is located before the beginning of Y.**
 
 [arc diagrams]: http://innovis.cpsc.ucalgary.ca/innovis/uploads/Courses/InformationVisualizationDetails2009/Wattenberg2002.pdf
 [suffix_tree]: http://cs.au.dk/~mailund/suffix_tree.html

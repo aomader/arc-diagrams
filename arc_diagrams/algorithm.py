@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from collections import defaultdict
-from itertools import product
+from itertools import product, islice
 
 from suffix_tree import SuffixTree
 
@@ -26,7 +26,7 @@ def maximal_matching_pairs(tree):
                    composed of the start of the first and the second substring,
                    as well as the length of the substring.
     """
-    string = tree.string
+    s = tree.string
     substrings = defaultdict(set)
 
     # get all substring starts repeated at least once
@@ -34,14 +34,14 @@ def maximal_matching_pairs(tree):
         node = leaf.parent
         end = leaf.start
         while node is not None and \
-              end - len(node.pathLabel) not in substrings[node.pathLabel] and \
+              (node.pathLabel not in substrings or end - len(node.pathLabel) \
+                      not in substrings[node.pathLabel]) and \
               node.edgeLabel != '':
             for i in range(len(node.pathLabel)):
                 substrings[node.pathLabel[:i+1]].add(end - len(node.pathLabel))
             end -= len(node.edgeLabel)
             node = node.parent
 
-    # test maximality criterion
     def contained(x, y, l, largers):
         for large in largers:
             starts = substrings[large]
@@ -53,34 +53,24 @@ def maximal_matching_pairs(tree):
         return False
 
     # apply constraints and yield legit pairs
-    for sub, starts in substrings.iteritems():
-        starts = sorted(starts)
-        largers = [k for k in substrings if len(k) > len(sub) and
-                   k.startswith(sub) and k.endswith(sub)]
+    for sub in sorted(substrings, key=len, reverse=True):
+        starts = sorted(substrings[sub])
         l = len(sub)
+        cs = [k for k in substrings if len(k) > len(sub) and
+              k.startswith(sub) and k.endswith(sub)]
 
-        for i in range(len(starts)):
-            x = starts[i]
-
-            # find non-overlapping consecutive pair
-            j = 0
-            while j < len(starts) and starts[j] < x + l:
-                j += 1
-            if j == len(starts):
-                continue
-            
-            y = starts[j]
-
-            # non maximal: left expansion
-            if x > 0 and x + l < y and string[x-1] == string[y-1]:
+        for x, y in zip(starts, islice(starts, 1, None)):
+            # overlapping
+            if x + l > y:
                 continue
 
-            # non maximal: right expansion
-            if y + l < len(string) and x + l < y and string[x+l] == string[y+l]:
+            # non maximal: left and right expansion
+            if (x > 0 and x + l < y and s[x-1] == s[y-1]) or \
+               (y + l < len(s) and x + l < y and s[x+l] == s[y+l]):
                 continue
 
-            # not maximal: inner/outer expansion
-            if contained(x, y, l, largers):
+            # not maximal: inner and outer expansion
+            if contained(x, y, l, cs):
                 continue
 
             yield x, y, l
