@@ -109,22 +109,21 @@ class Window(QWidget):
                 width:30px; }
             QPushButton:disabled { color: #ccc; }''')
 
-        # loading
-        #movie = QMovie(resource_filename(__name__, 'pixmaps/loading.gif'),
-        #               QByteArray(), self)
-        #movie.setCacheMode(QMovie.CacheAll)
-        #movie.setSpeed(150)
-        #movie_screen = QLabel(self)
-        #movie_screen.setStyleSheet('''background: transparent; border: 0;
-        #padding: 0; margin: 0;
-        #        ''')
-        #movie_screen.setSizePolicy(QSizePolicy.Expanding,
-        #         QSizePolicy.Expanding)
-        #movie_screen.setAlignment(Qt.AlignCenter)
-        #movie_screen.setMovie(movie)
-        #movie.start()
-        #movie_screen.move(300, 300)
-        #movie_screen.resize(124, 128)
+        # loading indicator
+        movie = QMovie(resource_filename(__name__, 'pixmaps/loading.gif'),
+                       QByteArray(), self)
+        movie.setCacheMode(QMovie.CacheAll)
+        movie.setSpeed(150)
+        movie.start()
+        self.loading = loading = QLabel(self)
+        loading.setStyleSheet('''background: transparent; border: 0;
+            padding: 0; margin: 0;''')
+        loading.setMovie(movie)
+        loading.resize(32, 32)
+        loading.hide()
+
+        view.findingArcs.connect(self.findingArcs)
+        self.working = False
 
         text.setText('11111000110111001001011110001101110001010')
 
@@ -134,6 +133,14 @@ class Window(QWidget):
         else:
             self.infoLabel.setText(info)
             self.infoLabel.show()
+
+    def findingArcs(self, working):
+        self.working = working
+        if working and self.timer is None:
+            QTimer.singleShot(1000, lambda: self.working and (self.view.clean()
+                or self.loading.show()))
+        if not working:
+            self.loading.hide()
 
     def openFile(self):
         dialog = QFileDialog(self)
@@ -149,10 +156,12 @@ class Window(QWidget):
         super(Window, self).resizeEvent(event)
         self.bottom.setGeometry(0, self.size().height() - 66,
                 self.size().width(), 66)
+        self.loading.move(self.size().width()/2 - 16,
+                          self.size().height()/2 - 16)
 
     def closeEvent(self, event):
         super(Window, self).closeEvent(event)
-        self.view.cleanup()
+        self.view.stopThreads()
 
 
 class Worker(QObject):
@@ -226,7 +235,7 @@ class SceneView(QGraphicsView):
         self.pressedAt = None
         self.workerThread = None
 
-    def cleanup(self):
+    def stopThreads(self):
         if self.workerThread is not None:
             self.worker.running = False
             self.workerThread.quit()
@@ -235,6 +244,7 @@ class SceneView(QGraphicsView):
     def setText(self, text):
         self.text = text
         self.setEnabled(False)
+        self.findingArcs.emit(True)
 
         if self.workerThread is not None and self.workerThread.isRunning():
             self.worker.arcsReady.disconnect(self.update)
@@ -252,12 +262,22 @@ class SceneView(QGraphicsView):
         QMetaObject.invokeMethod(self.worker, "findArcs",
             Qt.QueuedConnection, Q_ARG(unicode, unicode(text)))
 
-    @pyqtSlot(dict)
-    def update(self, arcs):
+    def clean(self):
         for info in self.arcViews.itervalues():
             for arc in info['arcs']:
                 self.scene.removeItem(arc)
+        self.textView.setText('')
+        self.arcViews = {}
+        self.detailLevels = []
+        self.marked = None
+        self.infoText.emit('')
+        self.setZoom(None)
+        self.setDetails(None)
 
+    @pyqtSlot(dict)
+    def update(self, arcs):
+        self.clean()
+        self.findingArcs.emit(False)
         self.textView.setText(self.text)
 
         self.marked = None
