@@ -124,6 +124,11 @@ class Window(QWidget):
 
         view.findingArcs.connect(self.findingArcs)
         self.working = False
+        self.timer = QTimer(self)
+        self.timer.timeout.connect(lambda: self.working and (self.view.clean()
+            or self.loading.show()))
+        self.timer.setInterval(1000)
+        self.timer.setSingleShot(True)
 
         text.setText('11111000110111001001011110001101110001010')
 
@@ -136,11 +141,8 @@ class Window(QWidget):
 
     def findingArcs(self, working):
         self.working = working
-        if working and self.timer is None:
-            QTimer.singleShot(1000, lambda: self.working and (self.view.clean()
-                or self.loading.show()))
-        if not working:
-            self.loading.hide()
+        self.timer.stop()
+        self.timer.start() if working else self.loading.hide()
 
     def openFile(self):
         dialog = QFileDialog(self)
