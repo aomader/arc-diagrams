@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+from binascii import hexlify
 from math import sqrt
 from multiprocessing import Process, Queue
 from pkg_resources import resource_filename
@@ -7,7 +8,7 @@ from pkg_resources import resource_filename
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 
-from .naive_algorithm import *
+from .naive_algorithm import essential_matching_pairs
 
 
 class Window(QWidget):
@@ -15,35 +16,29 @@ class Window(QWidget):
         super(Window, self).__init__(*args, **kwargs)
         self.setWindowTitle('ArcDiagrams')
         self.resize(800, 600)
-        self.setStyleSheet('''
-            #top { background: #fff; }
-            QLineEdit { border: 2px solid #eee;
-                        border-radius: 0;
-                        height: 26px;
-                        font-size: 12pt;
-                        color: #666;
-                        padding: 0px 5px;
-                        background: #f7f7f7; }
-            QLabel { color: #544721; background: #fff6bf; border-radius: 8px;
-            border: 2px solid #ffd324;padding: 4px 6px;
-            font-size: 10pt; }
-            QGraphicsView { border: 0; }
-            QPushButton { border:1px solid #ccc; background:#fff; color: #666;
-            outline: none;
-            font-size:16pt; height: 30px; width:30px;}
-            QPushButton:disabled {
-                color:#ccc;
-            }''')
 
         # the central ui component
-        view = SceneView()
+        self.view = view = SceneView()
+        view.setStyleSheet('border: 0;')
 
         # top bar
         text = QLineEdit()
+        self.text = text
+        text.setStyleSheet('''border: 2px solid #eee; border-radius: 0;
+            height: 26px; font-size: 12pt; color: #666; padding: 0px 5px;
+            background: #f7f7f7;''')
         text.textChanged.connect(lambda: view.setText(text.text()))
+        openFile = QPushButton()
+        openFile.setStyleSheet('background: #ffffff; border: 0; outline: 0;')
+        openFile.setIcon(QIcon(resource_filename(__name__,
+            'pixmaps/open.png')))
+        openFile.setIconSize(QSize(30, 30))
+        openFile.clicked.connect(self.openFile)
         topLayout = QHBoxLayout(); topLayout.setMargin(18); topLayout.setSpacing(18)
         topLayout.addWidget(text)
-        top = QWidget(); top.setLayout(topLayout); top.setObjectName('top')
+        topLayout.addWidget(openFile)
+        top = QWidget(); top.setLayout(topLayout)
+        top.setStyleSheet('background: #fff')
         shadow = QGraphicsDropShadowEffect()
         shadow.setBlurRadius(10)
         shadow.setOffset(0, 0)
@@ -58,6 +53,9 @@ class Window(QWidget):
 
         # info label
         infoLabel = QLabel()
+        infoLabel.setStyleSheet('''color: #544721; background: #fff6bf;
+            border-radius: 8px; border: 2px solid #ffd324; padding: 4px 6px;
+            font-size: 10pt;''')
         view.infoText.connect(infoLabel.setText)
         view.infoText.connect(lambda x: infoLabel.show() if x != '' else
                                         infoLabel.hide())
@@ -105,6 +103,11 @@ class Window(QWidget):
         bottomLayout.addWidget(zoom)
         bottomLayout.addWidget(zoomIn)
         self.bottom = QWidget(self); self.bottom.setLayout(bottomLayout)
+        self.bottom.setStyleSheet('''
+            QPushButton { border: 1px solid #ccc; background: #fff;
+                color: #666; outline: none; font-size: 16pt; height: 30px;
+                width:30px; }
+            QPushButton:disabled { color: #ccc; }''')
 
         # loading
         #movie = QMovie(resource_filename(__name__, 'pixmaps/loading.gif'),
@@ -132,10 +135,24 @@ class Window(QWidget):
             self.infoLabel.setText(info)
             self.infoLabel.show()
 
+    def openFile(self):
+        dialog = QFileDialog(self)
+        dialog.open()
+        dialog.fileSelected.connect(self.readFile)
+    
+    def readFile(self, path):
+        with open(path, 'rb') as f:
+            content = f.read()
+        self.text.setText(hexlify(content))
+
     def resizeEvent(self, event):
         super(Window, self).resizeEvent(event)
         self.bottom.setGeometry(0, self.size().height() - 66,
                 self.size().width(), 66)
+
+    def closeEvent(self, event):
+        super(Window, self).closeEvent(event)
+        self.view.cleanup()
 
 
 class Worker(QObject):
@@ -208,6 +225,12 @@ class SceneView(QGraphicsView):
         self.marked = None
         self.pressedAt = None
         self.workerThread = None
+
+    def cleanup(self):
+        if self.workerThread is not None:
+            self.worker.running = False
+            self.workerThread.quit()
+            self.workerThread.wait()
 
     def setText(self, text):
         self.text = text
