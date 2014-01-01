@@ -15,6 +15,7 @@ def maximal_matching_pairs(string):
                    as well as the length of the substring.
     """
     n = len(string)
+    pairs = []
 
     for x in range(0, n - 1):
         for l in range(int((n - x)/2) + 1, 0, -1):
@@ -23,23 +24,15 @@ def maximal_matching_pairs(string):
             y = string.find(c, x + l)
 
             # not found or not consecutive
-            if y == -1 or string.find(c, x + 1, y + l - 1) != -1:
+            if y == -1 or string.find(c, x + l, y) != -1:
                 continue
 
-            # not maximal: left or right expansion
-            if (y + l < n and x + l < y and string[x+l] == string[y+l]) or \
-               (x - 1 >= 0 and x + l < y and string[x-1] == string[y-1]):
+            # not maximal
+            if any(x1 <= x <= x1 + l1 - l and y1 <= y <= y1 + l1 - l
+                   for x1,y1,l1 in pairs):
                 continue
-
-            # not maximal: inner expansion
-            if any(string[x:x+l+i] == string[y-i:y+l]
-                   for i in range(1, (y - x - l)/2 + 1)):
-                continue
-
-            # not maximal: outer expansion
-            if any(string[x-i:x+l] == string[y:y+l+i]
-                   for i in range(1, max(x, n - y - l) + 1)):
-                continue
+            
+            pairs.append((x, y, l))
 
             yield (x, y, l)
 

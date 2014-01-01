@@ -1,6 +1,3 @@
-from itertools import product, islice
-
-from pytest import mark
 from suffix_tree import SuffixTree
 
 from arc_diagrams.algorithm import *

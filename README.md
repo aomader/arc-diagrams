@@ -113,5 +113,18 @@ substring_.
 So you see there are at least two more properties missing, which further
 define a _repetition region_.
 
+## Adaptations
+
+Due to the above mentioned problems with the specifications stated in the
+paper, I use the following ones instead.
+
+### Maximal Matching Pair
+
+I use the adapted version of definition 1.3 presented in the previous chapter.
+
+> 1.3: _Consecutive_: _X_ occurs before _Y_, and there is no substring Z,
+> identical to X and Y, **whose beginning is located after the end of X and
+> its ending is located before the beginning of Y.**
+
 [arc diagrams]: http://innovis.cpsc.ucalgary.ca/innovis/uploads/Courses/InformationVisualizationDetails2009/Wattenberg2002.pdf
 [suffix_tree]: http://cs.au.dk/~mailund/suffix_tree.html

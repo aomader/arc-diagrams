@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from collections import defaultdict
-from itertools import product, islice
+from itertools import product
 
 from suffix_tree import SuffixTree
 
@@ -41,44 +41,46 @@ def maximal_matching_pairs(tree):
             end -= len(node.edgeLabel)
             node = node.parent
 
-    def contained(i, j, l, cs):
-        for c in cs:
-            xs = []
-            ys = []
-
-            for s in sorted(substrings[c]):
-                if s <= i and s + len(c) >= i + l:
-                    xs.append(s)
-                if s <= j and s + len(c) >= j + l:
-                    ys.append(s)
-
-            for a,b in product(xs, ys):
-                if a + len(c) <= b:
+    # test maximality criterion
+    def contained(x, y, l, largers):
+        for large in largers:
+            starts = substrings[large]
+            idx = list(find_all(large, sub))
+            for i,j in product(idx, idx):
+                if (x - i) + len(large) <= (y - j) and (x - i) in starts and \
+                   (y - j) in starts:
                     return True
         return False
 
     # apply constraints and yield legit pairs
     for sub, starts in substrings.iteritems():
         starts = sorted(starts)
-        cs = [k for k in substrings if len(k) > len(sub) and
-              k.startswith(sub) and k.endswith(sub)]
+        largers = [k for k in substrings if len(k) > len(sub) and
+                   k.startswith(sub) and k.endswith(sub)]
         l = len(sub)
-        for x, y in zip(starts, islice(starts, 1, None)):
-            # overlapping
-            if x + l > y:
-                continue
 
-            # non maximum: left expansion
+        for i in range(len(starts)):
+            x = starts[i]
+
+            # find non-overlapping consecutive pair
+            j = 0
+            while j < len(starts) and starts[j] < x + l:
+                j += 1
+            if j == len(starts):
+                continue
+            
+            y = starts[j]
+
+            # non maximal: left expansion
             if x > 0 and x + l < y and string[x-1] == string[y-1]:
                 continue
 
-            # non maximum: right expansion
+            # non maximal: right expansion
             if y + l < len(string) and x + l < y and string[x+l] == string[y+l]:
                 continue
 
-            # not maximum: inner/outer expansion
-            # TODO: There has to be a better way!
-            if contained(x, y, l, cs):
+            # not maximal: inner/outer expansion
+            if contained(x, y, l, largers):
                 continue
 
             yield x, y, l
@@ -125,12 +127,12 @@ def essential_matching_pairs(string):
     for x,y,l in maximal_matching_pairs(tree):
         if not any(x >= r and y + l <= e for r,e,_ in regions) or \
            any(int((x - r)/f) == int((y + l - r - 1)/f) for r,_,f in regions):
-            yield (x, y, l)
+            yield x, y, l
 
     # definition 3.3
     for r,e,l in regions:
         for x in range(r, e - l, l):
-            yield (x, x + l, l)
+            yield x, x + l, l
 
 
 def children(node):
@@ -139,5 +141,15 @@ def children(node):
     while c is not None:
         yield c
         c = c.next
+
+
+def find_all(a_str, sub):
+    """ Yield all occurences of a substring. """
+    start = 0
+    while True:
+        start = a_str.find(sub, start)
+        if start == -1: return
+        yield start
+        start += 1
 
 # vim: set expandtab shiftwidth=4 softtabstop=4 textwidth=79:

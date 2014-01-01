@@ -18,13 +18,10 @@ class TestMaximalMatchingPairs:
     @mark.randomize(s=str, str_attrs=('digits',), max_length=50, ncalls=100)
     def test_consecutive(self, s):
         for x,y,l in self.generate(s):
-            i = s.find(s[x:x+l], x+1, y+l)
-            print (x, y, l)
-            assert i == -1 or i == y
+            assert s.find(s[x:x+l], x+l, y) == -1
 
     @mark.randomize(s=str, str_attrs=('digits',), max_length=50, ncalls=100)
     def test_maximal(self, s):
-        n = len(s)
         for x,y,l in self.generate(s):
             for i,j in islice(product(range(x + 1), range(y - x - l + 1)), 1, None):
                 sub = s[x-i:x+l+j]
@@ -38,7 +35,8 @@ class TestMaximalMatchingPairs:
         self.verify('123a123', [(0, 4, 3)])
 
     def test_example3(self):
-        self.verify('10101010', [(0, 2, 2), (4, 6, 2), (1, 3, 2), (3, 5, 2)])
+        self.verify('10101010', [(0, 2, 2), (0, 4, 4), (4, 6, 2), (1, 3, 2),
+                                 (3, 5, 2)])
 
     def test_example4(self):
         self.verify('28746391479735648274639137',
@@ -46,6 +44,8 @@ class TestMaximalMatchingPairs:
                      (4, 14, 1), (5, 12, 1), (6, 10, 1), (8, 15, 1), (9, 11, 1),
                      (10, 22, 1), (11, 18, 1), (12, 21, 1), (14, 20, 1),
                      (15, 19, 1), (18, 25, 1), (21, 24, 1)])
+    def test_exa(self):
+        self.test_maximal('28746391479735648274639137')
 
     def test_example5(self):
         self.verify('1234567abcde1234567fghij1234567',
@@ -53,12 +53,18 @@ class TestMaximalMatchingPairs:
 
     def test_example6(self):
         self.verify('abcd111110000011111abcd',
-                    [(0, 19, 4), (4, 14, 5), (4, 5, 1), (7, 8, 1), (9, 10, 1),
-                     (12, 13, 1), (14, 15, 1), (17, 18, 1)])
+                    [(0, 19, 4), (4, 14, 5), (4, 6, 2), (4, 5, 1), (7, 8, 1),
+                     (5, 7, 2), (9, 11, 2), (9, 10, 1), (12, 13, 1),
+                     (10, 12, 2), (14, 16, 2), (15, 17, 2), (14, 15, 1),
+                     (17, 18, 1)])
 
     def verify(self, string, expected):
         result = sorted(self.generate(string))
         assert result == sorted(expected)
+        self.test_identical(string)
+        self.test_nonoverlapping(string)
+        self.test_consecutive(string)
+        self.test_maximal(string)
 
     def generate(self, string):
         return maximal_matching_pairs(string)
@@ -100,6 +106,7 @@ class TestRepetitionRegions:
     def verify(self, string, expected):
         result = sorted(self.generate(string))
         assert result == sorted(expected)
+        self.test_successive(string)
 
     def generate(self, string):
         return repetition_regions(string)
