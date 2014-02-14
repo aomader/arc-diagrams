@@ -76,8 +76,28 @@ class TestRepetitionRegions:
     @mark.randomize(s=str, str_attrs=('digits',), max_length=50, ncalls=100)
     def test_minimal(self, s):
         for r,n,l in self.generate(s):
-            assert (n - r) % l == 0 and n <= len(s)
-            assert len(set(s[x:x+l] for x in range(r, n, l))) == 1
+            for d in range(l):
+                for l1 in range(l-d, 0, -1):
+                    if d == 0 and l1 == l:
+                        continue
+
+                    p = s[r+d:r+d+l1]
+
+                    a = r+d
+                    while a - l1 >= 0 and s[a-l1:a] == p:
+                        a -= l1
+
+                    b = r+d
+                    while b + l1 <= len(s) and s[b+l1:b+l1+l1] == p:
+                        b += l1
+
+                    assert r < a or n > b
+
+    @mark.randomize(s=str, str_attrs=('digits',), max_length=50, ncalls=100)
+    def test_leftmost(self, s):
+        for r,n,l in self.generate(s):
+            key = s[r-1:r-1+l]
+            assert not all(key == s[i:i+l] for i in range(r-1, n-1, l))
 
     def test_example1(self):
         self.verify('ABC010101', [(3, 9, 2)])
@@ -94,15 +114,17 @@ class TestRepetitionRegions:
 
     def test_example5(self):
         self.verify('11111000110111001001011110001101110001010',
-                    [(0, 5, 1), (5, 8, 1), (8, 10, 1), (11, 14, 1),
+                    [(0, 5, 1), (5, 8, 1), (7, 13, 3), (8, 10, 1), (11, 14, 1),
                      (14, 16, 1), (17, 19, 1), (21, 25, 1),
-                     (25, 28, 1), (28, 30, 1), (31, 34, 1),
-                     (34, 37, 1)])
+                     (25, 28, 1), (27, 33, 3), (28, 30, 1), (31, 34, 1),
+                     (34, 37, 1), (36, 40, 2)])
 
     def verify(self, string, expected):
         result = sorted(self.generate(string))
         assert result == sorted(expected)
         self.test_successive(string)
+        self.test_minimal(string)
+        self.test_leftmost(string)
 
     def generate(self, string):
         return repetition_regions(string)

@@ -47,8 +47,12 @@ def repetition_regions(string):
     Find all repetition regions as specified in definition 2 and the following
     further limiting rules:
     
-    2.1) _Minimal_: There do not exist other repetition regions R'
-         containing R, with the fundamental substring P' containing P.
+    2.1) _Minimal_: There doesn't exist any other repetition region R'
+         containing R, with an equal or smaller fundamental substring P',
+         contained in P.
+    2.2) _Leftmost_: There doesn't exist another repetition region R',
+         originating from R shifted one character to the left, with equal
+         length of the region and of the fundamental substring.
 
     Args:
         string (str): The string to be searched.
@@ -70,10 +74,20 @@ def repetition_regions(string):
             while string.find(candidate, end, end + l) == end:
                 end += l
 
-            if end != s + l:
-                regions.append((s, end, len(candidate)))
-                s = end - 1
-                break
+            # not enough pairs
+            if end == s + l:
+                continue
+
+            # not left most
+            if (s-1, end-1, len(candidate)) in regions:
+                continue
+
+            # not minimal
+            if any(r[0] <= s and r[1] >= end and r[2] <= len(candidate)
+                   for r in regions):
+                continue
+
+            regions.append((s, end, len(candidate)))
         s += 1
     return regions
 
