@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 
+import naive_algorithm
+
 from collections import defaultdict
 from itertools import product, islice
 
@@ -76,13 +78,16 @@ def maximal_matching_pairs(tree):
             yield x, y, l
 
 
-def repetition_regions(string):
+def repetition_regions(tree):
     """
     Find all repetition regions as specified in definition 2 and the following
     further limiting rules:
     
-    2.1) _Minimal_: There do not exist other repetition regions R'
+    2.1) _Minimal_: There does not exist any other repetition region R'
          containing R, with the fundamental substring P' containing P.
+    2.2) _Leftmost_: There doesn't exist another repetition region R',
+         originating from R shifted one character to the left, with equal
+         length of the region and of the fundamental substring.
 
     Args:
         tree (SuffixTree): A suffix tree, build from the string to be searched.
@@ -93,7 +98,44 @@ def repetition_regions(string):
               the region, the end of the region not inclusive and the length
               of the fundamental substring, respectively.
     """
-    return []
+    return naive_algorithm.repetition_regions(tree.string)
+
+    s = tree.string
+    substrings = defaultdict(set)
+
+    for leaf in tree.leaves:
+        node = leaf.parent
+        end = leaf.start
+        while node is not None and \
+              (node.pathLabel not in substrings or end - len(node.pathLabel) \
+                      not in substrings[node.pathLabel]) and \
+              node.edgeLabel != '':
+            for i in range(len(node.pathLabel)):
+                substrings[node.pathLabel[:i+1]].add(end - len(node.pathLabel))
+            end -= len(node.edgeLabel)
+            node = node.parent
+
+    regions = []
+
+    for sub in sorted(substrings, key=len):
+        starts = sorted(substrings[sub])
+        l = len(sub)
+
+        a = 0
+        while a < len(starts) - 1:
+            f = starts[a]
+            e = f + l
+            b = a + 1
+            while b < len(starts) and starts[b] - starts[b - 1] == l:
+                e += l
+                b += 1
+
+            if b - a > 1:
+                regions.append((f, e, l))
+
+            a = b
+
+    return regions
 
 
 def essential_matching_pairs(string):
