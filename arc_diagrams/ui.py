@@ -8,7 +8,7 @@ from pkg_resources import resource_filename
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 
-from .naive_algorithm import *
+from .algorithm import *
 
 
 class Window(QWidget):
@@ -152,7 +152,10 @@ class Window(QWidget):
     def readFile(self, path):
         with open(path, 'rb') as f:
             content = f.read()
-        self.text.setText(hexlify(content))
+        content = hexlify(content)
+        # TODO: Remove the cutting once the algorithm is fast enough.
+        content = content[0:min(len(content), 1000)]
+        self.text.setText(content)
 
     def resizeEvent(self, event):
         super(Window, self).resizeEvent(event)
